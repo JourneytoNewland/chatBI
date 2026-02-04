@@ -1,0 +1,78 @@
+"""API 请求和响应模型."""
+
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
+
+
+class SearchRequest(BaseModel):
+    """检索请求模型.
+
+    Attributes:
+        query: 查询文本
+        top_k: 返回结果数量，默认 10
+        score_threshold: 相似度阈值（可选）
+    """
+
+    query: str = Field(..., min_length=1, max_length=500, description="查询文本")
+    top_k: int = Field(default=10, ge=1, le=100, description="返回结果数量")
+    score_threshold: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="相似度阈值，低于该值的结果将被过滤",
+    )
+
+
+class MetricCandidate(BaseModel):
+    """指标候选结果.
+
+    Attributes:
+        metric_id: 指标ID
+        name: 指标名称
+        code: 指标编码
+        description: 业务含义
+        domain: 业务域
+        score: 相似度分数
+        synonyms: 同义词列表
+        formula: 计算公式（可选）
+    """
+
+    metric_id: str = Field(..., description="指标ID")
+    name: str = Field(..., description="指标名称")
+    code: str = Field(..., description="指标编码")
+    description: str = Field(..., description="业务含义")
+    domain: str = Field(..., description="业务域")
+    score: float = Field(..., description="相似度分数")
+    synonyms: list[str] = Field(default_factory=list, description="同义词列表")
+    formula: Optional[str] = Field(None, description="计算公式")
+
+
+class SearchResponse(BaseModel):
+    """检索响应模型.
+
+    Attributes:
+        query: 查询文本
+        candidates: 候选指标列表
+        total: 返回结果数量
+        execution_time: 执行时间（毫秒）
+    """
+
+    query: str = Field(..., description="查询文本")
+    candidates: list[MetricCandidate] = Field(..., description="候选指标列表")
+    total: int = Field(..., description="返回结果数量")
+    execution_time: float = Field(..., description="执行时间（毫秒）")
+
+
+class ErrorResponse(BaseModel):
+    """错误响应模型.
+
+    Attributes:
+        error: 错误类型
+        message: 错误信息
+        detail: 详细信息（可选）
+    """
+
+    error: str = Field(..., description="错误类型")
+    message: str = Field(..., description="错误信息")
+    detail: Optional[str] = Field(None, description="详细信息")
