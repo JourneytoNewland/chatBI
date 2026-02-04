@@ -122,6 +122,22 @@
 
         <!-- 结果展示区域 -->
         <div id="resultsSection" class="hidden">
+            <!-- 意图识别结果 -->
+            <div class="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg shadow-lg p-6 mb-6 step-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-gray-800">
+                        🎯 意图识别结果
+                    </h2>
+                    <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
+                        智能解析
+                    </span>
+                </div>
+
+                <div id="intentResults" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- 动态填充意图信息 -->
+                </div>
+            </div>
+
             <!-- 第一步：双路召回 -->
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6 step-card">
                 <div class="flex items-center justify-between mb-4">
@@ -338,6 +354,11 @@
             document.getElementById('resultsSection').classList.remove('hidden');
             document.getElementById('totalTime').textContent = totalTime.toFixed(0);
 
+            // 显示意图识别结果
+            if (data.intent) {
+                displayIntentResults(data.intent);
+            }
+
             // 模拟中间步骤的时间分配
             const recallTime = Math.round(totalTime * 0.4);
             const featureTime = Math.round(totalTime * 0.2);
@@ -366,6 +387,101 @@
 
             // 显示最终结果
             displayFinalResults(data.candidates);
+        }
+
+        // 显示意图识别结果
+        function displayIntentResults(intent) {
+            const container = document.getElementById('intentResults');
+
+            const items = [];
+
+            // 核心查询
+            items.push({
+                icon: '🔍',
+                label: '核心查询',
+                value: intent.core_query || '-',
+                color: 'blue'
+            });
+
+            // 时间范围
+            if (intent.time_range && intent.time_range.length === 2) {
+                const startDate = new Date(intent.time_range[0]);
+                const endDate = new Date(intent.time_range[1]);
+                items.push({
+                    icon: '📅',
+                    label: '时间范围',
+                    value: `${formatDate(startDate)} - ${formatDate(endDate)}`,
+                    color: 'green'
+                });
+            }
+
+            // 时间粒度
+            if (intent.time_granularity) {
+                items.push({
+                    icon: '⏰',
+                    label: '时间粒度',
+                    value: intent.time_granularity,
+                    color: 'purple'
+                });
+            }
+
+            // 聚合类型
+            if (intent.aggregation_type) {
+                items.push({
+                    icon: '🧮',
+                    label: '聚合类型',
+                    value: intent.aggregation_type,
+                    color: 'orange'
+                });
+            }
+
+            // 维度
+            if (intent.dimensions && intent.dimensions.length > 0) {
+                items.push({
+                    icon: '📊',
+                    label: '分析维度',
+                    value: intent.dimensions.join(', '),
+                    color: 'pink'
+                });
+            }
+
+            // 比较类型
+            if (intent.comparison_type) {
+                items.push({
+                    icon: '📈',
+                    label: '比较类型',
+                    value: intent.comparison_type,
+                    color: 'indigo'
+                });
+            }
+
+            // 过滤条件
+            if (intent.filters && Object.keys(intent.filters).length > 0) {
+                const filterText = Object.entries(intent.filters)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(', ');
+                items.push({
+                    icon: '🔧',
+                    label: '过滤条件',
+                    value: filterText,
+                    color: 'gray'
+                });
+            }
+
+            container.innerHTML = items.map(item => `
+                <div class="p-3 bg-${item.color}-50 rounded-lg border border-${item.color}-200">
+                    <div class="flex items-center mb-1">
+                        <span class="mr-2 text-lg">${item.icon}</span>
+                        <span class="text-sm font-medium text-${item.color}-700">${item.label}</span>
+                    </div>
+                    <div class="ml-7 text-sm font-semibold text-${item.color}-900">${item.value}</div>
+                </div>
+            `).join('');
+        }
+
+        // 格式化日期
+        function formatDate(date) {
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         }
 
         // 显示向量召回结果

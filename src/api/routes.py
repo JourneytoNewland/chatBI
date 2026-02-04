@@ -6,8 +6,9 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, status
 from qdrant_client.http.exceptions import UnexpectedResponse
 
-from src.api.models import MetricCandidate, SearchRequest, SearchResponse
+from src.api.models import IntentInfo, MetricCandidate, SearchRequest, SearchResponse
 from src.config import settings
+from src.inference.intent import IntentRecognizer
 from src.recall.dual_recall import DualRecall, DualRecallResult
 from src.recall.graph.neo4j_client import Neo4jClient
 from src.recall.vector.models import MetricMetadata
@@ -23,6 +24,7 @@ router = APIRouter()
 _vectorizer: Optional[MetricVectorizer] = None
 _ranker: Optional[RuleBasedRanker] = None
 _validator: Optional[ValidationPipeline] = None
+_intent_recognizer: Optional[IntentRecognizer] = None
 
 
 def get_vectorizer() -> MetricVectorizer:
@@ -47,6 +49,14 @@ def get_validator() -> ValidationPipeline:
     if _validator is None:
         _validator = ValidationPipeline()
     return _validator
+
+
+def get_intent_recognizer() -> IntentRecognizer:
+    """获取意图识别器实例（单例）."""
+    global _intent_recognizer
+    if _intent_recognizer is None:
+        _intent_recognizer = IntentRecognizer()
+    return _intent_recognizer
 
 
 @router.post("/search", response_model=SearchResponse)
@@ -79,13 +89,21 @@ async def search_metrics(request: Request, search_req: SearchRequest) -> SearchR
         vectorizer = get_vectorizer()
         ranker = get_ranker()
         validator = get_validator()
+        intent_recognizer = get_intent_recognizer()
+
+        # 0. 意图识别
+        intent = intent_recognizer.recognize(search_req.query)
+
+        # 根据意图优化查询
+        # 使用核心查询词（去除时间等干扰信息）
+        optimized_query = intent.core_query if intent.core_query else search_req.query
 
         # 1. 双路召回
         if neo4j_client is not None:
             # 双路召回模式
             dual_recall = DualRecall(vectorizer, vector_store, neo4j_client)
             recall_results = await dual_recall.dual_recall(
-                query=search_req.query,
+                query=optimized_query,  # 使用优化后的查询
                 vector_top_k=search_req.top_k * 2,  # 召回更多候选
                 graph_top_k=search_req.top_k,
                 final_top_k=search_req.top_k * 2,
@@ -93,9 +111,9 @@ async def search_metrics(request: Request, search_req: SearchRequest) -> SearchR
         else:
             # 仅向量召回模式（兼容性）
             query_metadata = MetricMetadata(
-                name=search_req.query,
-                code=search_req.query,
-                description=search_req.query,
+                name=optimized_query,  # 使用优化后的查询
+                code=optimized_query,
+                description=optimized_query,
                 synonyms=[],
                 domain="查询",
             )
@@ -144,7 +162,7 @@ async def search_metrics(request: Request, search_req: SearchRequest) -> SearchR
             )
 
         # 3. 精排
-        context = QueryContext.from_text(search_req.query)
+        context = QueryContext.from_text(optimized_query)  # 使用优化后的查询
         ranked_results = ranker.rerank(candidates, context, top_k=search_req.top_k)
 
         # 4. 验证并格式化结果
@@ -171,8 +189,20 @@ async def search_metrics(request: Request, search_req: SearchRequest) -> SearchR
         # 5. 计算执行时间
         execution_time = (time.time() - start_time) * 1000
 
+        # 6. 格式化意图信息
+        intent_info = IntentInfo(
+            core_query=intent.core_query,
+            time_range=intent.time_range,
+            time_granularity=intent.time_granularity.value if intent.time_granularity else None,
+            aggregation_type=intent.aggregation_type.value if intent.aggregation_type else None,
+            dimensions=intent.dimensions,
+            comparison_type=intent.comparison_type,
+            filters=intent.filters,
+        )
+
         return SearchResponse(
             query=search_req.query,
+            intent=intent_info,
             candidates=final_candidates,
             total=len(final_candidates),
             execution_time=round(execution_time, 2),

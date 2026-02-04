@@ -1,8 +1,31 @@
 """API 请求和响应模型."""
 
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
+
+
+class IntentInfo(BaseModel):
+    """意图识别信息.
+
+    Attributes:
+        core_query: 核心查询词（去除时间等）
+        time_range: 时间范围 (start_date, end_date)
+        time_granularity: 时间粒度
+        aggregation_type: 聚合类型
+        dimensions: 维度列表
+        comparison_type: 比较类型
+        filters: 过滤条件
+    """
+
+    core_query: str = Field(..., description="核心查询词")
+    time_range: Optional[tuple[datetime, datetime]] = Field(None, description="时间范围")
+    time_granularity: Optional[str] = Field(None, description="时间粒度")
+    aggregation_type: Optional[str] = Field(None, description="聚合类型")
+    dimensions: list[str] = Field(default_factory=list, description="维度列表")
+    comparison_type: Optional[str] = Field(None, description="比较类型")
+    filters: dict[str, Any] = Field(default_factory=dict, description="过滤条件")
 
 
 class SearchRequest(BaseModel):
@@ -53,12 +76,14 @@ class SearchResponse(BaseModel):
 
     Attributes:
         query: 查询文本
+        intent: 意图识别结果
         candidates: 候选指标列表
         total: 返回结果数量
         execution_time: 执行时间（毫秒）
     """
 
     query: str = Field(..., description="查询文本")
+    intent: Optional[IntentInfo] = Field(None, description="意图识别结果")
     candidates: list[MetricCandidate] = Field(..., description="候选指标列表")
     total: int = Field(..., description="返回结果数量")
     execution_time: float = Field(..., description="执行时间（毫秒）")
