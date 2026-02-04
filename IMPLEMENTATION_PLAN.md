@@ -11,15 +11,15 @@
 ### 任务分解
 
 - [x] 1.1 项目骨架搭建
-- [ ] 1.2 向量化Pipeline
+- [x] 1.2 向量化Pipeline
 - [ ] 1.3 Qdrant部署与集成
 - [ ] 1.4 检索API实现
 - [ ] 1.5 测试用例编写
 - [ ] 1.6 性能基准测试
 
-### 当前任务: 1.2 向量化Pipeline
-**状态**: 进行中
-**预期输出**: MetricVectorizer类，支持批量向量化
+### 当前任务: 1.3 Qdrant部署与集成
+**状态**: 待开始
+**预期输出**: QdrantVectorStore类，支持Collection创建、批量upsert、ANN检索
 ```
 
 ---
