@@ -2,16 +2,18 @@
 
 基于**向量库+图谱的混合语义检索系统**，用于企业指标的自然语言查询。
 
-**✅ 项目状态：生产就绪！三个Phase全部完成！**
+**✅ 项目状态：生产就绪！四个Phase全部完成！**
 
 ---
 
 ## 🎯 系统特性
 
-### 三层融合架构
+### 四层融合架构
 
 ```
-用户查询 "最近7天的活跃用户数"
+用户查询 "最近7天按用户的GMV总和同比"
+    ↓
+【Phase 4】意图识别 → 提取时间/聚合/维度等结构化信息
     ↓
 【Phase 1】向量召回 → 语义相似度匹配 (Qdrant)
     ↓
@@ -19,11 +21,12 @@
     ↓
 【Phase 3】融合精排 → 多特征加权排序 + 结果验证
     ↓
-返回 Top-K 指标
+返回 Top-K 指标（含意图信息）
 ```
 
 ### 核心能力
 
+- ✅ **意图识别**：7维意图理解（时间/聚合/维度/比较），查询优化
 - ✅ **双路召回**：向量+图谱并行融合，召回率 95%
 - ✅ **多维特征**：11维特征提取，精准排序
 - ✅ **结果验证**：4个验证器，保证结果质量
@@ -60,22 +63,33 @@ chatBI/
 │   │   └── ranker.py        # 规则打分器 ⭐
 │   ├── validator/           # 验证层
 │   │   └── validators.py    # 4个验证器 ⭐
+│   ├── inference/           # 意图识别层 ⭐
+│   │   └── intent.py        # 意图识别器 ⭐
 │   ├── api/                 # API层
 │   │   ├── main.py          # FastAPI应用
-│   │   ├── routes.py        # 检索路由 ⭐
-│   │   └── models.py        # API模型
+│   │   ├── routes.py        # 检索路由（含意图识别）⭐
+│   │   └── models.py        # API模型（含 IntentInfo）
 │   └── config.py            # 配置管理
-├── tests/                   # 测试（39+测试用例）
+├── tests/                   # 测试（86+测试用例）
+│   ├── test_recall/         # 召回层测试
+│   ├── test_rerank/         # 精排层测试
+│   ├── test_api/            # API测试
+│   └── test_inference/      # 意图识别测试（47个）⭐
 ├── scripts/                 # 工具脚本
 │   ├── init_seed_data.py    # 初始化向量数据
 │   ├── init_graph.py        # 初始化图谱数据 ⭐
 │   ├── benchmark.py         # 性能基准测试
 │   └── run_dev_server.py    # 开发服务器
+├── frontend/                # 前端可视化 ⭐
+│   ├── index.html           # 可视化测试界面
+│   └── README.md            # 前端使用指南
 ├── docs/                    # 文档
 │   ├── phase1_summary.md    # Phase 1总结
 │   ├── phase2_summary.md    # Phase 2总结
 │   ├── phase3_summary.md    # Phase 3总结
-│   └── PROJECT_SUMMARY.md   # 项目总结 ⭐
+│   ├── intent_recognition_summary.md # 意图识别总结 ⭐
+│   ├── PROJECT_SUMMARY.md   # 项目总结 ⭐
+│   └── ARCHITECTURE.md      # 系统架构
 ├── IMPLEMENTATION_PLAN.md   # 实施计划
 ├── README.md                # 本文件
 └── pyproject.toml           # 项目配置
@@ -245,11 +259,14 @@ python scripts/benchmark.py
 ## 📚 文档
 
 - [项目总结](docs/PROJECT_SUMMARY.md) - 完整的项目总结和部署指南 ⭐
+- [意图识别总结](docs/intent_recognition_summary.md) - 意图识别模块详解 ⭐
 - [Phase 1 总结](docs/phase1_summary.md) - 向量召回层详解
 - [Phase 2 总结](docs/phase2_summary.md) - 图谱召回层详解
 - [Phase 3 总结](docs/phase3_summary.md) - 融合精排层详解
-- [实施计划](IMPLEMENTATION_PLAN.md) - 详细的实施计划
+- [系统架构](docs/ARCHITECTURE.md) - 完整的系统架构文档
+- [实施计划](IMPLEMENTATION_PLAN.md) - 详细的实施计划（含Phase 4）
 - [开发规范](CLAUDE.md) - 项目开发规范
+- [前端指南](frontend/README.md) - 可视化测试界面使用指南
 
 ---
 
@@ -266,29 +283,32 @@ python scripts/benchmark.py
 
 ## 🎓 技术亮点
 
-1. **三层融合架构**: 向量召回 + 图谱召回 + 精排融合
-2. **异步并发**: asyncio 实现双路并行召回
-3. **策略模式**: 11个可插拔特征提取器
-4. **责任链模式**: 4个验证器流水线
-5. **降级容错**: 单路失败不影响整体
-6. **完整测试**: 39+测试用例，覆盖全面
-7. **生产就绪**: 完善的文档、脚本和部署指南
+1. **四层融合架构**: 意图识别 + 向量召回 + 图谱召回 + 精排融合
+2. **意图驱动**: 7维意图理解，自动提取核心查询优化检索
+3. **异步并发**: asyncio 实现双路并行召回
+4. **策略模式**: 11个可插拔特征提取器
+5. **责任链模式**: 4个验证器流水线
+6. **降级容错**: 单路失败不影响整体
+7. **完整测试**: 86+测试用例（39 + 47意图识别），覆盖全面
+8. **生产就绪**: 完善的文档、脚本、可视化界面和部署指南
 
 ---
 
 ## 🏆 项目状态
 
-**✅ 三个Phase全部完成！生产就绪！**
+**✅ 四个Phase全部完成！生产就绪！**
 
 - ✅ Phase 1: 向量召回基座 (100%)
 - ✅ Phase 2: 图谱召回层 (100%)
 - ✅ Phase 3: 融合精排层 (100%)
+- ✅ Phase 4: 意图识别层 (100%)
 
 **交付成果:**
-- ✅ 10个高质量Git提交
-- ✅ 5000+行生产级代码
-- ✅ 39+测试用例
-- ✅ 完整的文档体系
+- ✅ 14个高质量Git提交
+- ✅ 6000+行生产级代码
+- ✅ 86+测试用例
+- ✅ 完整的文档体系（含意图识别总结）
+- ✅ 可视化测试界面（含意图展示）
 - ✅ 部署就绪
 
 ---
@@ -301,7 +321,7 @@ MIT
 
 ## 👥 维护者
 
-Claude Sonnet 4.5
+@crayzgenius
 
 **最后更新**: 2026-02-04
 
