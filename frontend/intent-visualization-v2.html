@@ -527,6 +527,77 @@
                 }
             },
             {
+                id: 'llm_intent',
+                title: 'LLM意图识别',
+                icon: '🤖',
+                description: '智谱AI大模型意图识别',
+                getDetail: (data) => ({
+                    input: `查询: ${data.query}`,
+                    algorithm: 'Few-shot Learning + Chain of Thought (智谱AI glm-4-flash)',
+                    output: `
+                        <ul class="detail-list">
+                            <li><span class="detail-list-label">LLM模型</span><span class="detail-list-value">glm-4-flash</span></li>
+                            <li><span class="detail-list-label">提示词策略</span><span class="detail-list-value">4-shot + JSON约束</span></li>
+                            <li><span class="detail-list-label">Temperature</span><span class="detail-list-value">0.1</span></li>
+                        </ul>
+                    `,
+                    duration: 7000
+                })
+            },
+            {
+                id: 'vectorization',
+                title: '查询向量化',
+                icon: '🔄',
+                description: '将查询转换为向量',
+                getDetail: (data) => ({
+                    input: `核心查询: ${data.intent?.core_query || data.query}`,
+                    algorithm: 'sentence-transformers (m3e-base)',
+                    output: `
+                        <ul class="detail-list">
+                            <li><span class="detail-list-label">向量维度</span><span class="detail-list-value">384</span></li>
+                            <li><span class="detail-list-label">向量范数</span><span class="detail-list-value">1.0</span></li>
+                        </ul>
+                    `,
+                    duration: 700
+                })
+            },
+            {
+                id: 'vector_recall',
+                title: '向量召回',
+                icon: '🔷',
+                description: '双路链路1 - 语义检索',
+                getDetail: (data) => ({
+                    input: `查询向量: shape=(384,)`,
+                    algorithm: '余弦相似度 + HNSW索引',
+                    output: `召回 ${data.candidates?.length || 0} 个候选`,
+                    duration: 30
+                })
+            },
+            {
+                id: 'graph_recall',
+                title: '图谱召回',
+                icon: '🔶',
+                description: '双路链路2 - 关系推理',
+                getDetail: (data) => ({
+                    input: `核心查询: ${data.intent?.core_query || data.query}`,
+                    algorithm: 'Neo4j + Cypher查询',
+                    output: `基于知识图谱的关系扩展`,
+                    duration: 10
+                })
+            },
+            {
+                id: 'merge',
+                title: '双路合并',
+                icon: '🔷🔶',
+                description: '合并向量召回和图谱召回结果',
+                getDetail: (data) => ({
+                    input: '向量召回候选 + 图谱召回候选',
+                    algorithm: 'merged_score = 0.6 * vector_score + 0.4 * graph_score',
+                    output: `合并后 ${data.candidates?.length || 0} 个候选`,
+                    duration: 5
+                })
+            },
+            {
                 id: 'recall',
                 title: '双路召回',
                 icon: '🔮',
