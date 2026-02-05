@@ -331,7 +331,7 @@ class MQLExecutionEngine:
     def _apply_group_by(
         self,
         data: List[Dict[str, Any]],
-        dimensions: List[str]]
+        dimensions: List[str]
     ) -> List[Dict[str, Any]]:
         """应用分组."""
         if not dimensions:
@@ -393,7 +393,7 @@ class MQLExecutionEngine:
         self,
         data: List[Dict[str, Any]],
         comparison,
-        metric_def: Dict[str, Any]]
+        metric_def: Dict[str, Any]
     ) -> Dict[str, Any]:
         """应用比较（同比/环比）."""
         # 模拟比较数据

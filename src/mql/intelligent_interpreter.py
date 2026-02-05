@@ -51,6 +51,12 @@ class IntelligentInterpreter:
 
         # 2. 尝试LLM解读
         try:
+            # 构建提示词（保存用于展示）
+            prompt = self._build_llm_prompt(query, data_analysis, metric_def, mql_result)
+
+            # 保存提示词到data_analysis中，供前端展示
+            data_analysis["_prompt"] = prompt
+
             interpretation = self._generate_llm_interpretation(
                 query,
                 data_analysis,
