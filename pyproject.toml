@@ -18,6 +18,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "tqdm>=4.66.0",
     "neo4j>=5.15.0",
+    "zhipuai>=2.1.0",  # GLM API for summary generation
+    "psycopg2-binary>=2.9.9",  # PostgreSQL database driver
 ]
 
 [project.optional-dependencies]
@@ -26,6 +28,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "httpx>=0.25.0",  # For testing FastAPI
+    "typer>=0.9.0",  # For CLI scripts
     "black>=23.11.0",
     "ruff>=0.1.0",
     "mypy>=1.7.0",
