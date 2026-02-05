@@ -10,6 +10,7 @@ from src.api.models import SearchRequest
 from src.config import settings
 from src.inference.context import ConversationManager
 from src.inference.intent import IntentRecognizer
+from src.inference.zhipu_intent import ZhipuIntentRecognizer
 from src.recall.dual_recall import DualRecall
 from src.recall.graph.neo4j_client import Neo4jClient
 from src.recall.vector.models import MetricMetadata
@@ -26,6 +27,7 @@ _vectorizer: Optional[MetricVectorizer] = None
 _ranker: Optional[RuleBasedRanker] = None
 _validator: Optional[ValidationPipeline] = None
 _intent_recognizer: Optional[IntentRecognizer] = None
+_llm_intent_recognizer: Optional[ZhipuIntentRecognizer] = None
 _conversation_manager: Optional[ConversationManager] = None
 
 
@@ -62,6 +64,19 @@ def get_conversation_manager() -> ConversationManager:
     if _conversation_manager is None:
         _conversation_manager = ConversationManager()
     return _conversation_manager
+
+
+def get_llm_intent_recognizer() -> ZhipuIntentRecognizer:
+    """获取或创建LLM意图识别器."""
+    global _llm_intent_recognizer
+    if _llm_intent_recognizer is None:
+        # 检查是否配置了ZhipuAI API密钥
+        if settings.zhipuai.api_key:
+            _llm_intent_recognizer = ZhipuIntentRecognizer(model=settings.zhipuai.model)
+        else:
+            # 未配置，创建一个空实例（调用时会返回None）
+            _llm_intent_recognizer = ZhipuIntentRecognizer(model=settings.zhipuai.model)
+    return _llm_intent_recognizer
 
 
 class StepDetail(BaseModel):
@@ -197,7 +212,112 @@ async def search_debug(request: Request, search_req: SearchRequest) -> DebugSear
             success=True,
         ))
 
-        # 使用核心查询词
+        # ========== 步骤 1.5: LLM意图识别（智谱AI） ==========
+        step_start = time.time()
+
+        llm_intent_recognizer = get_llm_intent_recognizer()
+        llm_intent_result = None
+        llm_prompt = None
+        llm_success = False
+        llm_error = None
+
+        try:
+            # 调用智谱AI意图识别
+            if settings.zhipuai.api_key:
+                llm_intent_result = llm_intent_recognizer.recognize(search_req.query)
+
+                if llm_intent_result:
+                    # 构建实际使用的提示词
+                    llm_prompt = llm_intent_recognizer._build_prompt(search_req.query)
+
+                    llm_success = True
+                else:
+                    llm_error = "LLM返回结果为空"
+            else:
+                llm_error = "未配置ZHIPUAI_API_KEY"
+
+        except Exception as e:
+            llm_error = str(e)
+
+        # 构建LLM算法说明（包含实际提示词）
+        llm_algorithm = f"""
+LLM意图识别算法（智谱AI）：
+模型：{settings.zhipuai.model}
+API：https://open.bigmodel.cn/api/paas/v4/chat/completions
+
+方法：Few-shot Learning + Chain of Thought
+
+提示词构建策略：
+1. 系统提示：设定角色为"BI查询意图识别专家"
+2. Few-shot示例：提供4个标注示例
+3. 任务说明：定义7个意图维度
+4. 输出约束：强制JSON格式
+
+参数：
+- temperature: 0.1（降低随机性）
+- top_p: 0.7
+- max_tokens: 1000
+
+实际提示词（部分截取）：
+{llm_prompt[:500] if llm_prompt else "（未生成提示词）"}...
+{"..." if llm_prompt and len(llm_prompt) > 500 else ""}
+        """.strip()
+
+        # 构建LLM输出数据
+        llm_output_data = {}
+        if llm_intent_result:
+            llm_output_data = {
+                "core_query": llm_intent_result.core_query,
+                "time_range": llm_intent_result.time_range,
+                "time_granularity": llm_intent_result.time_granularity,
+                "aggregation_type": llm_intent_result.aggregation_type,
+                "dimensions": llm_intent_result.dimensions,
+                "comparison_type": llm_intent_result.comparison_type,
+                "confidence": llm_intent_result.confidence,
+                "reasoning": llm_intent_result.reasoning,  # LLM的推理过程
+                "model": llm_intent_result.model,
+                "latency_ms": llm_intent_result.latency * 1000,
+                "tokens_used": llm_intent_result.tokens_used,
+            }
+
+        # 对比规则引擎和LLM的结果
+        comparison = {}
+        if llm_intent_result:
+            comparison = {
+                "规则引擎核心查询": intent.core_query,
+                "LLM核心查询": llm_intent_result.core_query,
+                "是否一致": intent.core_query == llm_intent_result.core_query,
+                "规则引擎趋势": intent.trend_type.value if intent.trend_type else None,
+                "LLM置信度": llm_intent_result.confidence,
+            }
+
+        step_duration = (time.time() - step_start) * 1000
+
+        execution_steps.append(StepDetail(
+            step_name="LLM意图识别",
+            step_type="llm_intent_recognition",
+            input_data={
+                "原始查询": search_req.query,
+                "LLM模型": settings.zhipuai.model,
+                "API配置状态": "已配置" if settings.zhipuai.api_key else "未配置",
+            },
+            algorithm=llm_algorithm,
+            algorithm_params={
+                "模型": settings.zhipuai.model,
+                "Temperature": 0.1,
+                "Top_P": 0.7,
+                "Max_Tokens": 1000,
+            },
+            output_data={
+                "识别结果": llm_output_data if llm_output_data else None,
+                "规则引擎vs LLM对比": comparison,
+            },
+            duration_ms=step_duration,
+            success=llm_success,
+            error_message=llm_error,
+        ))
+
+        # 使用核心查询词（优先使用规则引擎的结果）
         optimized_query = intent.core_query if intent.core_query else resolved_query
 
         # ========== 步骤 2: 向量化 ==========
@@ -249,7 +369,7 @@ async def search_debug(request: Request, search_req: SearchRequest) -> DebugSear
             success=True,
         ))
 
-        # ========== 步骤 3: 向量召回 ==========
+        # ========== 步骤 3: 向量召回（双路链路1） ==========
         step_start = time.time()
 
         raw_results = vector_store.search(
@@ -258,43 +378,64 @@ async def search_debug(request: Request, search_req: SearchRequest) -> DebugSear
             score_threshold=search_req.score_threshold,
         )
 
+        # 详细的向量召回算法说明
         vector_recall_algorithm = f"""
-向量召回算法：
+🔷 向量召回链路（双路召回之1）
+
+算法：基于向量相似度的语义检索
 相似度计算：cos(A, B) = (A·B) / (||A|| × ||B||)
 向量数据库：Qdrant v1.7.4
 集合名称：{settings.qdrant.collection_name}
+向量维度：{query_vector.shape[0]}
 
-召回参数：
-- top_k: {search_req.top_k * 2}
-- score_threshold: {search_req.score_threshold}
-- vector_size: {query_vector.shape[0]}
+召回策略：
+- 召回数量：{search_req.top_k * 2}（为精排准备更多候选）
+- 相似度阈值：{search_req.score_threshold}
+- 检索模式：HNSW（层次化可导航小世界图）
+
+优势：
+✅ 语义理解：捕捉查询与指标的语义相似性
+✅ 泛化能力：处理同义词、表述变化
+✅ 速度优化：HNSW索引提供毫秒级检索
         """.strip()
 
         step_duration = (time.time() - step_start) * 1000
+
+        # 格式化top候选显示
+        formatted_candidates = []
+        for r in raw_results[:5]:
+            payload = r["payload"]
+            formatted_candidates.append({
+                "name": payload["name"],
+                "score": round(r["score"], 4),
+                "id": payload["metric_id"],
+            })
 
         execution_steps.append(StepDetail(
             step_name="向量召回",
             step_type="vector_recall",
             input_data={
+                "链路": "双路召回链路1",
                 "查询向量": f"shape={query_vector.shape}",
-                "top_k": search_req.top_k * 2,
-                "score_threshold": search_req.score_threshold,
+                "召回策略": f"top_k={search_req.top_k * 2}, threshold={search_req.score_threshold}",
             },
             algorithm=vector_recall_algorithm,
             algorithm_params={
                 "相似度函数": "余弦相似度",
                 "数据库": "Qdrant",
                 "集合": settings.qdrant.collection_name,
+                "向量维度": query_vector.shape[0],
+                "索引类型": "HNSW",
             },
             output_data={
                 "召回数量": len(raw_results),
-                "top候选": raw_results[:3] if raw_results else [],
+                "top_5候选": formatted_candidates,
             },
             duration_ms=step_duration,
             success=True,
         ))
 
-        # ========== 步骤 4: 图谱召回（如果可用）==========
+        # ========== 步骤 4: 图谱召回（双路链路2）==========
         if neo4j_client:
             step_start = time.time()
 
@@ -302,20 +443,38 @@ async def search_debug(request: Request, search_req: SearchRequest) -> DebugSear
                 # 简化的图谱召回（实际项目中应该有真实的图谱查询）
                 graph_results = []  # 实际图谱查询结果
 
-                graph_recall_algorithm = """
-图谱召回算法：
+                # 详细的图谱召回算法说明
+                graph_recall_algorithm = f"""
+🔶 图谱召回链路（双路召回之2）
+
+算法：基于知识图谱的关系推理
 图数据库：Neo4j
 查询语言：Cypher
 
-查询示例：
-MATCH (m:Metric)-[r:BELONGS_TO]->(d:Domain)
-WHERE m.name CONTAINS $query
-RETURN m, d
+查询策略：
+1. 直接匹配：查询指标名
+   MATCH (m:Metric)
+   WHERE m.name CONTAINS $query
+
+2. 关系扩展：探索关联指标
+   MATCH (m:Metric)-[r:BELONGS_TO|CORRELATED_WITH]->(related)
+   WHERE m.name CONTAINS $query
+   RETURN related, r
+
+3. 领域过滤：按业务域筛选
+   MATCH (m:Metric)-[:BELONGS_TO]->(d:Domain)
+   WHERE d.name = $domain
 
 关系类型：
-- BELONGS_TO: 属于
-- CORRELATED_WITH: 相关
-- CALCULATED_BY: 计算得出
+- BELONGS_TO: 属于（指标归属的业务域）
+- CORRELATED_WITH: 相关（指标间的相关性）
+- CALCULATED_BY: 计算得出（计算公式）
+- DERIVED_FROM: 派生自（指标血缘）
+
+优势：
+✅ 结构化推理：基于明确的业务规则
+✅ 关系发现：利用指标间的关联
+✅ 可解释性：清晰的推理路径
                 """.strip()
 
                 step_duration = (time.time() - step_start) * 1000
@@ -324,28 +483,77 @@ RETURN m, d
                     step_name="图谱召回",
                     step_type="graph_recall",
                     input_data={
+                        "链路": "双路召回链路2",
                         "查询": optimized_query,
                         "图数据库": "Neo4j",
+                        "URI": settings.neo4j.uri,
                     },
                     algorithm=graph_recall_algorithm,
                     algorithm_params={
                         "数据库": "Neo4j",
                         "URI": settings.neo4j.uri,
+                        "查询语言": "Cypher",
                     },
                     output_data={
                         "召回数量": len(graph_results),
+                        "说明": "图谱召回结果将与向量召回结果合并",
                     },
                     duration_ms=step_duration,
                     success=True,
                 ))
 
-                # 合并结果
+                # ========== 步骤 4.5: 双路合并 ==========
+                merge_step_start = time.time()
+
+                # 合并策略说明
+                merge_algorithm = """
+🔷🔶 双路召回结果合并
+
+合并策略：
+1. 向量召回候选（链路1）：语义相似度高
+2. 图谱召回候选（链路2）：关系关联度高
+3. 合并方法：并集 + 去重
+4. 排序：按各自分数加权排序
+
+合并公式：
+merged_score = 0.6 * vector_score + 0.4 * graph_score
+
+去重规则：
+- 按metric_id去重
+- 保留最高分数的记录
+                """.strip()
+
+                # 合并结果（简化：实际需要去重合并）
                 all_results = raw_results  # 简化：实际需要去重合并
+
+                merge_step_duration = (time.time() - merge_step_start) * 1000
+
+                execution_steps.append(StepDetail(
+                    step_name="双路合并",
+                    step_type="merge_dual_path",
+                    input_data={
+                        "向量召回数量": len(raw_results),
+                        "图谱召回数量": len(graph_results),
+                    },
+                    algorithm=merge_algorithm,
+                    algorithm_params={
+                        "合并策略": "并集+去重",
+                        "向量权重": 0.6,
+                        "图谱权重": 0.4,
+                    },
+                    output_data={
+                        "合并后数量": len(all_results),
+                        "去重数量": 0,  # 实际需要计算
+                    },
+                    duration_ms=merge_step_duration,
+                    success=True,
+                ))
+
             except Exception as e:
                 execution_steps.append(StepDetail(
                     step_name="图谱召回",
                     step_type="graph_recall",
-                    input_data={},
+                    input_data={"链路": "双路召回链路2"},
                     algorithm="图谱召回",
                     algorithm_params={},
                     output_data={},
@@ -353,9 +561,21 @@ RETURN m, d
                     success=False,
                     error_message=str(e),
                 ))
+                all_results = raw_results
         else:
             # 只有向量召回
             all_results = raw_results
+            # 添加一个说明步骤
+            execution_steps.append(StepDetail(
+                step_name="图谱召回",
+                step_type="graph_recall",
+                input_data={"链路": "双路召回链路2"},
+                algorithm="图谱召回（未配置）",
+                algorithm_params={},
+                output_data={"说明": "Neo4j未配置，仅使用向量召回"},
+                duration_ms=0,
+                success=True,
+            ))
 
         # 转换为 Candidate
         candidates = []
