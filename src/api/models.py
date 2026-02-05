@@ -17,8 +17,12 @@ class IntentInfo(BaseModel):
         dimensions: 维度列表
         comparison_type: 比较类型
         filters: 过滤条件
+        trend_type: 趋势类型（新增）
+        sort_requirement: 排序需求（新增）
+        threshold_filters: 阈值过滤列表（新增）
     """
 
+    # ========== 原有字段（保持不变） ==========
     core_query: str = Field(..., description="核心查询词")
     time_range: Optional[tuple[datetime, datetime]] = Field(None, description="时间范围")
     time_granularity: Optional[str] = Field(None, description="时间粒度")
@@ -26,6 +30,11 @@ class IntentInfo(BaseModel):
     dimensions: list[str] = Field(default_factory=list, description="维度列表")
     comparison_type: Optional[str] = Field(None, description="比较类型")
     filters: dict[str, Any] = Field(default_factory=dict, description="过滤条件")
+
+    # ========== 新增字段（可选，默认None） ==========
+    trend_type: Optional[str] = Field(None, description="趋势类型（upward/downward/fluctuating/stable）")
+    sort_requirement: Optional[dict] = Field(None, description="排序需求（top_n, order, metric）")
+    threshold_filters: list[dict] = Field(default_factory=list, description="阈值过滤列表")
 
 
 class SearchRequest(BaseModel):
@@ -35,6 +44,7 @@ class SearchRequest(BaseModel):
         query: 查询文本
         top_k: 返回结果数量，默认 10
         score_threshold: 相似度阈值（可选）
+        conversation_id: 会话ID（用于多轮对话，新增）
     """
 
     query: str = Field(..., min_length=1, max_length=500, description="查询文本")
@@ -45,6 +55,7 @@ class SearchRequest(BaseModel):
         le=1.0,
         description="相似度阈值，低于该值的结果将被过滤",
     )
+    conversation_id: Optional[str] = Field(None, description="会话ID（用于多轮对话）")
 
 
 class MetricCandidate(BaseModel):
@@ -80,6 +91,7 @@ class SearchResponse(BaseModel):
         candidates: 候选指标列表
         total: 返回结果数量
         execution_time: 执行时间（毫秒）
+        conversation_id: 会话ID（新增）
     """
 
     query: str = Field(..., description="查询文本")
@@ -87,6 +99,7 @@ class SearchResponse(BaseModel):
     candidates: list[MetricCandidate] = Field(..., description="候选指标列表")
     total: int = Field(..., description="返回结果数量")
     execution_time: float = Field(..., description="执行时间（毫秒）")
+    conversation_id: Optional[str] = Field(None, description="会话ID")
 
 
 class ErrorResponse(BaseModel):

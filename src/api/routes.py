@@ -1,6 +1,7 @@
 """检索 API 路由."""
 
 import time
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Request, status
@@ -8,6 +9,7 @@ from qdrant_client.http.exceptions import UnexpectedResponse
 
 from src.api.models import IntentInfo, MetricCandidate, SearchRequest, SearchResponse
 from src.config import settings
+from src.inference.context import ConversationManager
 from src.inference.intent import IntentRecognizer
 from src.recall.dual_recall import DualRecall, DualRecallResult
 from src.recall.graph.neo4j_client import Neo4jClient
@@ -25,6 +27,7 @@ _vectorizer: Optional[MetricVectorizer] = None
 _ranker: Optional[RuleBasedRanker] = None
 _validator: Optional[ValidationPipeline] = None
 _intent_recognizer: Optional[IntentRecognizer] = None
+_conversation_manager: Optional[ConversationManager] = None
 
 
 def get_vectorizer() -> MetricVectorizer:
@@ -59,6 +62,14 @@ def get_intent_recognizer() -> IntentRecognizer:
     return _intent_recognizer
 
 
+def get_conversation_manager() -> ConversationManager:
+    """获取会话管理器实例（单例）."""
+    global _conversation_manager
+    if _conversation_manager is None:
+        _conversation_manager = ConversationManager()
+    return _conversation_manager
+
+
 @router.post("/search", response_model=SearchResponse)
 async def search_metrics(request: Request, search_req: SearchRequest) -> SearchResponse:
     """智能检索指标（双路召回 + 精排 + 验证）.
@@ -90,15 +101,23 @@ async def search_metrics(request: Request, search_req: SearchRequest) -> SearchR
         ranker = get_ranker()
         validator = get_validator()
         intent_recognizer = get_intent_recognizer()
+        conversation_manager = get_conversation_manager()
 
-        # 0. 意图识别
-        intent = intent_recognizer.recognize(search_req.query)
+        # 0. 获取或创建会话上下文
+        conversation_id = search_req.conversation_id or str(uuid.uuid4())
+        ctx = conversation_manager.get_or_create(conversation_id)
+
+        # 1. 解析指代关系（使用会话上下文）
+        resolved_query = ctx.resolve_reference(search_req.query)
+
+        # 2. 意图识别（使用解析后的查询）
+        intent = intent_recognizer.recognize(resolved_query)
 
         # 根据意图优化查询
         # 使用核心查询词（去除时间等干扰信息）
-        optimized_query = intent.core_query if intent.core_query else search_req.query
+        optimized_query = intent.core_query if intent.core_query else resolved_query
 
-        # 1. 双路召回
+        # 3. 双路召回
         if neo4j_client is not None:
             # 双路召回模式
             dual_recall = DualRecall(vectorizer, vector_store, neo4j_client)
@@ -189,8 +208,12 @@ async def search_metrics(request: Request, search_req: SearchRequest) -> SearchR
         # 5. 计算执行时间
         execution_time = (time.time() - start_time) * 1000
 
-        # 6. 格式化意图信息
+        # 6. 添加到会话历史
+        ctx.add_turn(search_req.query, intent)
+
+        # 7. 格式化意图信息（扩展版）
         intent_info = IntentInfo(
+            # 原有字段
             core_query=intent.core_query,
             time_range=intent.time_range,
             time_granularity=intent.time_granularity.value if intent.time_granularity else None,
@@ -198,6 +221,22 @@ async def search_metrics(request: Request, search_req: SearchRequest) -> SearchR
             dimensions=intent.dimensions,
             comparison_type=intent.comparison_type,
             filters=intent.filters,
+            # 新增字段
+            trend_type=intent.trend_type.value if intent.trend_type else None,
+            sort_requirement={
+                "top_n": intent.sort_requirement.top_n,
+                "order": intent.sort_requirement.order.value,
+                "metric": intent.sort_requirement.metric,
+            } if intent.sort_requirement else None,
+            threshold_filters=[
+                {
+                    "metric": f.metric,
+                    "operator": f.operator,
+                    "value": f.value,
+                    "unit": f.unit,
+                }
+                for f in intent.threshold_filters
+            ],
         )
 
         return SearchResponse(
@@ -206,6 +245,7 @@ async def search_metrics(request: Request, search_req: SearchRequest) -> SearchR
             candidates=final_candidates,
             total=len(final_candidates),
             execution_time=round(execution_time, 2),
+            conversation_id=conversation_id,
         )
 
     except UnexpectedResponse as e:
