@@ -261,11 +261,14 @@ class IntentRecognizer:
         # 1.5. 移除疑问词
         core_query = self._remove_question_words(core_query)
 
-        # 2. 识别聚合类型
-        agg_type = self._extract_aggregation_type(core_query)
-
-        # 3. 识别维度
+        # 2. 识别维度（在识别聚合类型之前，因为维度词可能影响聚合）
         dimensions = self._extract_dimensions(core_query)
+
+        # 2.5. 移除维度词和统计词
+        core_query = self._remove_dimension_and_stat_words(core_query, dimensions)
+
+        # 3. 识别聚合类型
+        agg_type = self._extract_aggregation_type(core_query)
 
         # 4. 识别比较类型
         comparison_type = self._extract_comparison_type(query)
@@ -470,6 +473,37 @@ class IntentRecognizer:
 
         return core_query
 
+    def _remove_dimension_and_stat_words(self, query: str, dimensions: list[str]) -> str:
+        """移除维度词和统计词，提取核心查询词.
+
+        Args:
+            query: 查询文本
+            dimensions: 已识别的维度列表
+
+        Returns:
+            移除维度词和统计词后的核心查询词
+        """
+        core_query = query
+
+        # 移除维度前缀："按XX"、"按XX统计"、"按XX分析"
+        for dimension in dimensions:
+            # 移除"按维度"的各种变体
+            core_query = re.sub(rf'按{dimension}(统计|分析|查看|展示|显示|看)', '', core_query)
+            core_query = re.sub(rf'按{dimension}', '', core_query)
+            core_query = re.sub(rf'{dimension}(统计|分析|查看|展示|显示|看)', '', core_query)
+
+        # 移除常见的统计/分析词（即使没有明确的维度）
+        stat_words = ['统计', '分析', '查看', '展示', '显示', '看', '查询', '检索']
+        for word in stat_words:
+            core_query = re.sub(word, '', core_query)
+
+        # 移除残留的助词和空格
+        core_query = re.sub(r'^[的的之之]+', '', core_query)
+        core_query = re.sub(r'[的的之之]+$', '', core_query)
+        core_query = ' '.join(core_query.split())
+
+        return core_query
+
     def _extract_aggregation_type(self, query: str) -> Optional[AggregationType]:
         """提取聚合类型.
 
@@ -492,7 +526,7 @@ class IntentRecognizer:
             query: 查询文本
 
         Returns:
-            维度列表
+            维度列表（去重）
         """
         dimensions = []
 
@@ -500,7 +534,7 @@ class IntentRecognizer:
             match = re.search(pattern, query)
             if match:
                 dimension = match.group(1) if match.lastindex >= 1 else None
-                if dimension:
+                if dimension and dimension not in dimensions:  # 避免重复
                     dimensions.append(dimension)
 
         return dimensions
