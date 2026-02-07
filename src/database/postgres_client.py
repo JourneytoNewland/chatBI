@@ -1,275 +1,277 @@
-"""PostgreSQL 客户端封装."""
+"""PostgreSQL数据库客户端."""
 
-import logging
+from typing import Any, Dict, List, Optional, Tuple
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional
+import logging
 
 import psycopg2
 from psycopg2 import pool
-from psycopg2.extras import RealDictCursor
-from psycopg2.errors import Error as PostgresError
+from psycopg2.extras import RealDictCursor, NamedTupleCursor
 
 from src.config import settings
+
 
 logger = logging.getLogger(__name__)
 
 
 class PostgreSQLClient:
-    """PostgreSQL 客户端封装.
+    """PostgreSQL客户端管理类."""
 
-    提供连接池管理、查询执行、错误处理等功能。
-    参考Neo4jClient的实现模式。
+    _instance: Optional['PostgreSQLClient'] = None
+    _pool: Optional[pool.SimpleConnectionPool] = None
 
-    Attributes:
-        host: PostgreSQL主机地址
-        port: PostgreSQL端口
-        database: 数据库名称
-        user: 用户名
-        password: 密码
-    """
+    def __new__(cls) -> 'PostgreSQLClient':
+        """单例模式."""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
 
-    def __init__(
-        self,
-        host: Optional[str] = None,
-        port: Optional[int] = None,
-        database: Optional[str] = None,
-        user: Optional[str] = None,
-        password: Optional[str] = None,
-    ) -> None:
-        """初始化 PostgreSQL 客户端.
-
-        Args:
-            host: 主机地址，默认从环境变量读取
-            port: 端口，默认从环境变量读取
-            database: 数据库名，默认从环境变量读取
-            user: 用户名，默认从环境变量读取
-            password: 密码，默认从环境变量读取
-        """
-        config = settings.postgres
-
-        self.host = host or config.host
-        self.port = port or config.port
-        self.database = database or config.database
-        self.user = user or config.user
-        self.password = password or config.password
-
-        self._pool: Optional[pool.SimpleConnectionPool] = None
-        self._is_connected = False
-
-    def connect(self) -> pool.SimpleConnectionPool:
-        """建立连接池.
-
-        Returns:
-            连接池实例
-
-        Raises:
-            RuntimeError: 连接失败时抛出
-        """
+    def __init__(self):
+        """初始化PostgreSQL连接池."""
         if self._pool is None:
-            try:
-                self._pool = pool.SimpleConnectionPool(
-                    minconn=1,
-                    maxconn=settings.postgres.pool_size,
-                    host=self.host,
-                    port=self.port,
-                    database=self.database,
-                    user=self.user,
-                    password=self.password,
-                )
-                self._is_connected = True
-                logger.info(f"Connected to PostgreSQL at {self.host}:{self.port}")
-            except PostgresError as e:
-                msg = f"Failed to connect to PostgreSQL: {e}"
-                logger.error(msg)
-                raise RuntimeError(msg) from e
+            self._initialize_pool()
 
-        return self._pool
+    def _initialize_pool(self):
+        """初始化连接池."""
+        try:
+            # 从配置读取数据库连接信息
+            db_config = getattr(settings, 'postgres', None)
 
-    def close(self) -> None:
-        """关闭所有连接."""
-        if self._pool is not None:
-            self._pool.closeall()
+            if db_config is None:
+                logger.warning("PostgreSQL配置未找到，使用默认配置")
+                # 默认配置
+                db_config = {
+                    'host': 'localhost',
+                    'port': 5432,
+                    'database': 'chatbi',
+                    'user': 'postgres',
+                    'password': 'postgres'
+                }
+
+            self._pool = pool.SimpleConnectionPool(
+                minconn=1,
+                maxconn=10,
+                host=db_config.get('host', 'localhost'),
+                port=db_config.get('port', 5432),
+                database=db_config.get('database', 'chatbi'),
+                user=db_config.get('user', 'postgres'),
+                password=db_config.get('password', 'postgres')
+            )
+
+            logger.info(f"✅ PostgreSQL连接池已创建: {db_config.get('database')}")
+
+        except Exception as e:
+            logger.error(f"❌ PostgreSQL连接池创建失败: {e}")
             self._pool = None
-            self._is_connected = False
-            logger.info("PostgreSQL connection pool closed")
-
-    def is_connected(self) -> bool:
-        """检查连接状态.
-
-        Returns:
-            连接是否正常
-        """
-        return self._is_connected and self._pool is not None
 
     @contextmanager
-    def get_connection(self):
-        """获取数据库连接上下文管理器.
+    def get_connection(self, autocommit: bool = False):
+        """获取数据库连接（上下文管理器）.
+
+        Args:
+            autocommit: 是否自动提交
 
         Yields:
             数据库连接对象
+
+        Raises:
+            ConnectionError: 连接失败时抛出
         """
-        pool = self.connect()
-        conn = pool.getconn()
+        if self._pool is None:
+            raise ConnectionError("PostgreSQL连接池未初始化")
+
+        conn = None
         try:
+            conn = self._pool.getconn()
+            conn.autocommit = autocommit
             yield conn
-        finally:
-            pool.putconn(conn)
-
-    @contextmanager
-    def get_cursor(self):
-        """获取数据库游标上下文管理器.
-
-        Yields:
-            游标对象(RealDictCursor，返回字典格式)
-        """
-        with self.get_connection() as conn:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            try:
-                yield cursor
-                conn.commit()
-            except Exception:
+        except Exception as e:
+            if conn:
                 conn.rollback()
-                raise
-            finally:
-                cursor.close()
+            logger.error(f"数据库操作失败: {e}")
+            raise
+        finally:
+            if conn:
+                self._pool.putconn(conn)
 
     def execute_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        """执行查询语句.
+        params: Optional[Tuple] = None,
+        fetch: str = 'all',
+        dict_cursor: bool = True
+    ) -> Any:
+        """执行SQL查询.
 
         Args:
-            query: SQL 查询语句
-            parameters: 查询参数(参数化查询，防止SQL注入)
+            query: SQL查询语句
+            params: 查询参数
+            fetch: 返回类型 ('all', 'one', 'none')
+            dict_cursor: 是否使用字典游标（返回字段名）
 
         Returns:
-            查询结果列表
+            查询结果
 
         Raises:
-            RuntimeError: 查询失败时抛出
+            Exception: 查询失败时抛出
         """
-        try:
-            with self.get_cursor() as cursor:
-                cursor.execute(query, parameters or {})
-                return cursor.fetchall()
-        except PostgresError as e:
-            msg = f"Query execution failed: {e}\nQuery: {query}"
-            logger.error(msg)
-            raise RuntimeError(msg) from e
+        cursor_type = RealDictCursor if dict_cursor else NamedTupleCursor
 
-    def execute_write(
+        with self.get_connection() as conn:
+            with conn.cursor(cursor_factory=cursor_type) as cursor:
+                cursor.execute(query, params)
+
+                if fetch == 'all':
+                    return cursor.fetchall()
+                elif fetch == 'one':
+                    return cursor.fetchone()
+                else:
+                    return None
+
+    def execute_update(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
+        params: Optional[Tuple] = None,
+        auto_commit: bool = True
     ) -> int:
-        """执行写入操作.
+        """执行更新操作（INSERT/UPDATE/DELETE）.
 
         Args:
-            query: SQL 写入语句
-            parameters: 写入参数
+            query: SQL语句
+            params: 参数
+            auto_commit: 是否自动提交
 
         Returns:
             影响的行数
-
-        Raises:
-            RuntimeError: 写入失败时抛出
         """
-        try:
-            with self.get_cursor() as cursor:
-                cursor.execute(query, parameters or {})
+        with self.get_connection(autocommit=auto_commit) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params)
                 return cursor.rowcount
-        except PostgresError as e:
-            msg = f"Write operation failed: {e}\nQuery: {query}"
-            logger.error(msg)
-            raise RuntimeError(msg) from e
 
     def execute_batch(
         self,
         query: str,
-        parameters_list: List[Dict[str, Any]],
+        params_list: List[Tuple],
+        auto_commit: bool = True
     ) -> int:
-        """批量执行写入操作.
+        """批量执行SQL.
 
         Args:
-            query: SQL 写入语句
-            parameters_list: 写入参数列表
+            query: SQL语句
+            params_list: 参数列表
+            auto_commit: 是否自动提交
 
         Returns:
             总影响行数
+        """
+        with self.get_connection(autocommit=auto_commit) as conn:
+            with conn.cursor() as cursor:
+                total_rows = 0
+                for params in params_list:
+                    cursor.execute(query, params)
+                    total_rows += cursor.rowcount
+                return total_rows
 
-        Raises:
-            RuntimeError: 批量执行失败时抛出
+    def execute_script(self, script: str) -> bool:
+        """执行SQL脚本（多语句）.
+
+        Args:
+            script: SQL脚本内容
+
+        Returns:
+            是否执行成功
         """
         try:
             with self.get_connection() as conn:
-                cursor = conn.cursor(cursor_factory=RealDictCursor)
-                try:
-                    total_rows = 0
-                    for params in parameters_list:
-                        cursor.execute(query, params)
-                        total_rows += cursor.rowcount
+                with conn.cursor() as cursor:
+                    cursor.execute(script)
                     conn.commit()
-                    return total_rows
-                except Exception:
-                    conn.rollback()
-                    raise
-                finally:
-                    cursor.close()
-        except PostgresError as e:
-            msg = f"Batch execution failed: {e}"
-            logger.error(msg)
-            raise RuntimeError(msg) from e
-
-    def health_check(self) -> bool:
-        """健康检查.
-
-        Returns:
-            连接是否正常
-        """
-        try:
-            result = self.execute_query("SELECT 1")
-            return len(result) == 1 and result[0].get("?column?", 1) == 1
+                    logger.info("✅ SQL脚本执行成功")
+                    return True
         except Exception as e:
-            logger.error(f"Health check failed: {e}")
+            logger.error(f"❌ SQL脚本执行失败: {e}")
             return False
 
+    def test_connection(self) -> bool:
+        """测试数据库连接.
 
-# 测试
+        Returns:
+            连接是否成功
+        """
+        try:
+            result = self.execute_query("SELECT version()", fetch='one', dict_cursor=False)
+            if result:
+                logger.info(f"✅ PostgreSQL连接成功: {result[0]}")
+                return True
+            return False
+        except Exception as e:
+            logger.error(f"❌ PostgreSQL连接失败: {e}")
+            return False
+
+    def get_table_info(self, table_name: str) -> List[Dict[str, Any]]:
+        """获取表结构信息.
+
+        Args:
+            table_name: 表名
+
+        Returns:
+            列信息列表
+        """
+        query = """
+            SELECT
+                column_name,
+                data_type,
+                is_nullable,
+                column_default,
+                character_maximum_length
+            FROM information_schema.columns
+            WHERE table_name = %s
+            ORDER BY ordinal_position;
+        """
+        return self.execute_query(query, (table_name,))
+
+    def table_exists(self, table_name: str) -> bool:
+        """检查表是否存在.
+
+        Args:
+            table_name: 表名
+
+        Returns:
+            表是否存在
+        """
+        query = """
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables
+                WHERE table_name = %s
+            );
+        """
+        result = self.execute_query(query, (table_name,), fetch='one')
+        return result['exists'] if result else False
+
+    def close_all(self):
+        """关闭所有连接."""
+        if self._pool:
+            self._pool.closeall()
+            logger.info("✅ PostgreSQL连接池已关闭")
+
+
+# 全局单例
+postgres_client = PostgreSQLClient()
+
+
 if __name__ == "__main__":
-    print("\n🧪 测试PostgreSQL客户端")
-    print("=" * 60)
-
-    # 创建客户端
+    # 测试连接
+    logging.basicConfig(level=logging.INFO)
     client = PostgreSQLClient()
 
-    try:
-        # 测试连接
-        print("\n1. 测试连接...")
-        if client.is_connected():
-            print("   ✅ 连接成功")
-        else:
-            print("   ❌ 连接失败")
+    if client.test_connection():
+        print("✅ 数据库连接测试成功")
 
-        # 测试健康检查
-        print("\n2. 测试健康检查...")
-        if client.health_check():
-            print("   ✅ 健康检查通过")
-        else:
-            print("   ❌ 健康检查失败")
-
-        # 测试查询
-        print("\n3. 测试查询...")
-        result = client.execute_query("SELECT 1 AS test, NOW() AS current_time")
-        print(f"   查询结果: {result}")
-
-        print("\n" + "=" * 60)
-        print("✅ 所有测试通过")
-
-    except Exception as e:
-        print(f"\n❌ 测试失败: {e}")
-
-    finally:
-        client.close()
-        print("👋 连接已关闭")
+        # 检查表是否存在
+        tables = ['dim_date', 'dim_region', 'fact_orders', 'fact_user_activity']
+        for table in tables:
+            exists = client.table_exists(table)
+            print(f"{'✅' if exists else '❌'} 表 {table}: {'存在' if exists else '不存在'}")
+    else:
+        print("❌ 数据库连接测试失败")
