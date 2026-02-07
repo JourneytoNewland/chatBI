@@ -1,0 +1,46 @@
+# Prometheus配置文件
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'chatbi-cluster'
+    environment: 'production'
+
+# 规则文件
+rule_files:
+  - "alerts/*.yml"
+
+# 抓取配置
+scrape_configs:
+  # chatBI API服务监控
+  - job_name: 'chatbi-api'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+        labels:
+          service: 'chatbi-api'
+          env: 'production'
+    scrape_interval: 10s
+    metrics_path: '/metrics'
+
+  # PostgreSQL监控
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+    scrape_interval: 30s
+
+  # Qdrant监控
+  - job_name: 'qdrant'
+    static_configs:
+      - targets: ['qdrant:6333']
+        labels:
+          service: 'qdrant'
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Prometheus自身监控
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

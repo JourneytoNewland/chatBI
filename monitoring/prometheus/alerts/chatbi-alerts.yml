@@ -1,0 +1,85 @@
+# chatBI告警规则
+
+groups:
+  - name: chatbi_alerts
+    interval: 30s
+    rules:
+      # 高查询延迟告警
+      - alert: HighQueryLatency
+        expr: histogram_quantile(0.95, chatbi_query_duration_seconds_bucket) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: chatbi-api
+        annotations:
+          summary: "P95查询延迟超过1秒"
+          description: "P95查询延迟为 {{ $value }}秒，超过阈值1秒"
+
+      # 查询错误率告警
+      - alert: HighErrorRate
+        expr: rate(chatbi_queries_total{status="error"}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: chatbi-api
+        annotations:
+          summary: "错误率超过5%"
+          description: "查询错误率为 {{ $value | humanizePercentage }}，超过阈值5%"
+
+      # 意图识别延迟告警
+      - alert: HighIntentLatency
+        expr: chatbi_intent_recognition_duration_seconds_sum{layer="l3"} / chatbi_intent_recognition_duration_seconds_count{layer="l3"} > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: chatbi-api
+        annotations:
+          summary: "LLM意图识别延迟过高"
+          description: "LLM意图识别平均延迟为 {{ $value }}秒"
+
+      # 数据库连接池告警
+      - alert: DatabasePoolExhausted
+        expr: chatbi_db_pool_available{database="postgresql"} < 2
+        for: 1m
+        labels:
+          severity: critical
+          service: postgresql
+        annotations:
+          summary: "数据库连接池即将耗尽"
+          description: "PostgreSQL可用连接少于2个"
+
+      # LLM调用失败率告警
+      - alert: HighLLMErrorRate
+        expr: rate(chatbi_llm_requests_total{status="error"}[5m]) / rate(chatbi_llm_requests_total[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          service: llm
+        annotations:
+          summary: "LLM调用失败率过高"
+          description: "LLM调用失败率为 {{ $value | humanizePercentage }}，超过10%"
+
+      # 系统内存告警
+      - alert: HighMemoryUsage
+        expr: chatbi_memory_usage_bytes / (1024 * 1024 * 1024) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: chatbi-api
+        annotations:
+          summary: "内存使用超过2GB"
+          description: "当前内存使用为 {{ $value }}GB"
+
+  - name: chatbi_business_alerts
+    interval: 60s
+    rules:
+      # 查询量下降告警
+      - alert: LowQueryVolume
+        expr: rate(chatbi_queries_total[10m]) < 0.1
+        for: 15m
+        labels:
+          severity: info
+          service: chatbi-api
+        annotations:
+          summary: "查询量异常低"
+          description: "最近10分钟查询量为 {{ $value }}/s，低于正常水平"
