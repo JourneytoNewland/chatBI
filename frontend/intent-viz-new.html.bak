@@ -356,22 +356,22 @@
 
             // 核心指标
             document.getElementById('coreQuery').innerHTML = 
-                `<strong>指标：</strong>\${intent.core_query}<br>
+                \`<strong>指标：</strong>\${intent.core_query}<br>
                 <strong>定义：</strong>\${metric?.description || 'N/A'}<br>
-                <strong>单位：</strong>\${metric?.unit || 'N/A'}`;
+                <strong>单位：</strong>\${metric?.unit || 'N/A'}\`;
 
             // 时间范围
             if (intent.time_range) {
                 document.getElementById('timeRange').innerHTML = 
-                    `<strong>开始：</strong>\${intent.time_range.start}<br>
+                    \`<strong>开始：</strong>\${intent.time_range.start}<br>
                     <strong>结束：</strong>\${intent.time_range.end}<br>
-                    <strong>粒度：</strong>\${intent.time_granularity || 'N/A'}`;
+                    <strong>粒度：</strong>\${intent.time_granularity || 'N/A'}\`;
             }
 
             // 聚合操作
             document.getElementById('aggregation').innerHTML = 
-                `<strong>操作符：</strong>\${intent.aggregation_type || '无'}<br>
-                <strong>计算类型：</strong>\${metric?.calculation_type || 'N/A'}`;
+                \`<strong>操作符：</strong>\${intent.aggregation_type || '无'}<br>
+                <strong>计算类型：</strong>\${metric?.calculation_type || 'N/A'}\`;
 
             // 维度
             const dims = intent.dimensions || [];
@@ -382,7 +382,7 @@
             const filters = intent.filters || {};
             document.getElementById('filters').innerHTML = 
                 Object.keys(filters).length > 0 ? 
-                Object.entries(filters).map(([k, v]) => `<strong>\${k}:</strong> \${JSON.stringify(v)}`).join('<br>') :
+                Object.entries(filters).map(([k, v]) => \`<strong>\${k}:</strong> \${JSON.stringify(v)}\`).join('<br>') :
                 '无过滤条件';
 
             // 对比
@@ -392,14 +392,14 @@
             // 置信度
             const conf = 0.85 + Math.random() * 0.1;
             document.getElementById('confidence').innerHTML = 
-                `<div style="font-size: 24px; font-weight: 600; color: #667eea;">\${(conf * 100).toFixed(1)}%</div>`;
+                \`<div style="font-size: 24px; font-weight: 600; color: #667eea;">\${(conf * 100).toFixed(1)}%</div>\`;
 
             // LLM提示词
             displayLLMPrompt(query, intent, metric);
         }
 
         function displayLLMPrompt(query, intent, metric) {
-            const prompt = `你是一个专业的BI系统意图识别助手。请分析用户的自然语言查询，提取7个维度的意图信息。
+            const prompt = \`你是一个专业的BI系统意图识别助手。请分析用户的自然语言查询，提取7个维度的意图信息。
 
 【用户查询】
 \${query}
@@ -431,7 +431,7 @@
 6. filters: "[维度]为[值]"等过滤条件
 7. comparison_type: "同比/YoY"识别为同比，"环比/MoM"识别为环比
 
-请返回JSON格式的意图识别结果。`;
+请返回JSON格式的意图识别结果。\`;
 
             document.getElementById('llmPrompt').textContent = prompt;
         }

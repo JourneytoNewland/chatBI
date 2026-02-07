@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>API测试</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+        #result { margin-top: 20px; padding: 15px; background: #f0f0f0; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>🔌 API连接测试</h1>
+    <button onclick="testAPI()">测试API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '⏳ 正在测试...';
+
+            try {
+                console.log('开始请求...');
+                
+                const response = await fetch('http://localhost:8000/api/v2/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query: '最近7天的GMV' })
+                });
+
+                console.log('响应状态:', response.status);
+                console.log('响应头:', [...response.headers.entries()]);
+
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">✅ 连接成功！</div>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('详细错误:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">❌ 连接失败</div>
+                    <p><strong>错误:</strong> ${error.message}</p>
+                    <p><strong>可能原因:</strong></p>
+                    <ul>
+                        <li>后端服务未启动</li>
+                        <li>CORS配置问题</li>
+                        <li>网络连接问题</li>
+                        <li>浏览器扩展干扰</li>
+                    </ul>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

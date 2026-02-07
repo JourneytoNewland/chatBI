@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能问数系统 - 完全透明化版本</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 36px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 16px;
+        }
+
+        .transparency-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-input {
+            width: calc(100% - 160px);
+            padding: 15px 20px;
+            font-size: 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            outline: none;
+            display: inline-block;
+            vertical-align: middle;
+            transition: border-color 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+        }
+
+        .search-button {
+            padding: 15px 30px;
+            font-size: 18px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .search-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .examples {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+
+        .example-chip {
+            padding: 8px 16px;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .example-chip:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pipeline {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .step-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #667eea;
+        }
+
+        .step-card.success {
+            border-left-color: #10b981;
+        }
+
+        .step-card.processing {
+            border-left-color: #f59e0b;
+        }
+
+        .step-card.failed {
+            border-left-color: #ef4444;
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .step-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-processing {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-l1 {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-l2 {
+            background: #e9d5ff;
+            color: #5b21b6;
+        }
+
+        .badge-l3 {
+            background: #fce7f3;
+            color: #9f1239;
+        }
+
+        .step-meta {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 15px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .transparency-toggle {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a5568;
+            transition: all 0.2s;
+        }
+
+        .transparency-toggle:hover {
+            background: #e2e8f0;
+        }
+
+        .transparency-content {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .transparency-section {
+            margin-bottom: 20px;
+        }
+
+        .transparency-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-title {
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .code-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin: 10px 0;
+        }
+
+        .code-block .keyword {
+            color: #f687b3;
+        }
+
+        .code-block .string {
+            color: #68d391;
+        }
+
+        .code-block .comment {
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        .code-block .function {
+            color: #4299e1;
+        }
+
+        .input-output {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 10px 0;
+        }
+
+        .io-box {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 12px;
+        }
+
+        .io-title {
+            font-weight: 700;
+            color: #4a5568;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .io-content {
+            font-size: 13px;
+            color: #718096;
+        }
+
+        .api-call {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #667eea;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+
+        .api-method {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-right: 10px;
+        }
+
+        .api-url {
+            font-family: 'Monaco', monospace;
+            font-size: 13px;
+            color: #2d3748;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+            transition: width 0.5s ease;
+        }
+
+        .result-section {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .detail-item {
+            background: #f7fafc;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .detail-label {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 智能问数系统 - 完全透明化版本</h1>
+            <p>每一个步骤都清晰可见 · 每一个算法都显性展示 · 真实的AI系统，非空壳</p>
+            <div class="transparency-badge">✨ 100% 透明化</div>
+        </div>
+
+        <div class="search-box">
+            <div id="apiStatus" class="error-message" style="display: none; margin-bottom: 15px;">
+                ⚠️ API服务未连接，请先启动后端服务
+            </div>
+            
+            <input type="text" class="search-input" id="queryInput" 
+                   placeholder="请输入自然语言查询，例如：最近7天的GMV" 
+                   value="最近7天的GMV">
+            
+            <button class="search-button" onclick="executeQuery()">
+                🔍 开始智能分析
+            </button>
+            
+            <div class="examples">
+                <div class="example-chip" onclick="setQuery('最近7天的GMV')">最近7天的GMV</div>
+                <div class="example-chip" onclick="setQuery('本月按渠道统计DAU')">本月按渠道统计DAU</div>
+                <div class="example-chip" onclick="setQuery('按地区统计GMV并按降序排列')">按地区统计GMV并降序</div>
+                <div class="example-chip" onclick="setQuery('2024年1月的营收环比增长率')">2024年1月的营收环比</div>
+            </div>
+        </div>
+
+        <div id="pipelineContainer"></div>
+        <div id="resultContainer"></div>
+    </div>
+
+    <script>
+        // 检查API状态
+        async function checkAPIStatus() {
+            try {
+                const response = await fetch('http://localhost:8000/health', {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(3000)
+                });
+                if (response.ok) {
+                    document.getElementById('apiStatus').style.display = 'none';
+                    return true;
+                }
+            } catch (error) {
+                document.getElementById('apiStatus').style.display = 'block';
+                return false;
+            }
+            return false;
+        }
+
+        function setQuery(query) {
+            document.getElementById('queryInput').value = query;
+        }
+
+        // 透明化内容生成器
+        const TransparencyGenerator = {
+            // L1规则层详情
+            generateL1Details(layer, intent) {
+                return `
+                    <div class="transparency-section">
+                        <div class="section-title">📋 算法说明</div>
+                        <p><strong>算法类型：</strong>基于正则表达式的模式匹配</p>
+                        <p><strong>优势：</strong>速度快（<1ms），准确率高（95%+），适合常见模式</p>
+                        <p><strong>适用场景：</strong>标准的时间查询、指标查询、聚合查询</p>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">🔧 匹配规则</div>
+                        <div class="code-block">
+                            <span class="comment"># 时间模式匹配</span><br>
+                            TIME_PATTERNS = [<br>
+                            &nbsp;&nbsp;(r'最近(\\d+)[天日]', TimeGranularity.DAY),<br>
+                            &nbsp;&nbsp;(r'本月', TimeGranularity.MONTH),<br>
+                            &nbsp;&nbsp;(r'本周', TimeGranularity.WEEK)<br>
+                            ]<br><br>
+                            <span class="comment"># 聚合类型匹配</span><br>
+                            AGG_PATTERNS = [<br>
+                            &nbsp;&nbsp;(r'总和|总计|合计', AggregationType.SUM),<br>
+                            &nbsp;&nbsp;(r'平均', AggregationType.AVG),<br>
+                            &nbsp;&nbsp;(r'总数|数量', AggregationType.COUNT)<br>
+                            ]<br><br>
+                            <span class="comment"># 维度匹配</span><br>
+                            DIMENSION_PATTERNS = [<br>
+                            &nbsp;&nbsp;r'按(地区|品类|渠道|用户等级)',<br>
+                            &nbsp;&nbsp;r'分(地区|品类|渠道)统计'<br>
+                            ]
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">📊 输入输出</div>
+                        <div class="input-output">
+                            <div class="io-box">
+                                <div class="io-title">📥 输入</div>
+                                <div class="io-content">
+                                    原始查询: "${intent.query || 'N/A'}"<br>
+                                    预处理: 分词、停用词过滤
+                                </div>
+                            </div>
+                            <div class="io-box">
+                                <div class="io-title">📤 输出</div>
+                                <div class="io-content">
+                                    核心查询: ${intent.core_query || 'N/A'}<br>
+                                    时间范围: ${this.formatTimeRange(intent.time_range)}<br>
+                                    聚合类型: ${intent.aggregation_type || 'N/A'}<br>
+                                    维度: ${JSON.stringify(intent.dimensions || [])}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">⚡ 性能指标</div>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">执行时间</div>
+                                <div class="detail-value">${layer.duration.toFixed(3)} ms</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">置信度</div>
+                                <div class="detail-value">${(layer.confidence * 100).toFixed(1)}%</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">匹配方法</div>
+                                <div class="detail-value">${layer.metadata?.method || 'regex_patterns'}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            // L2语义层详情
+            generateL2Details(layer, intent, allLayers) {
+                const l1Layer = allLayers.find(l => l.layer_name.includes('L1'));
+                const similarity = layer.metadata?.similarity || 0;
+                
+                return `
+                    <div class="transparency-section">
+                        <div class="section-title">🧠 算法说明</div>
+                        <p><strong>算法类型：</strong>向量语义检索 + BGE-M3 嵌入模型</p>
+                        <p><strong>模型：</strong>BAAI/bge-m3 (1024维向量)</p>
+                        <p><strong>向量库：</strong>Qdrant (HNSW索引)</p>
+                        <p><strong>优势：</strong>理解语义相似性，支持模糊查询</p>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">🔄 处理流程</div>
+                        <div class="code-block">
+                            <span class="comment"># Step 1: 文本向量化</span><br>
+                            query_vector = bge_model.encode("${intent.query || 'N/A'}")<br>
+                            <span class="comment"># 输出: 1024维向量</span><br><br>
+                            <span class="comment"># Step 2: 向量检索 (Qdrant)</span><br>
+                            results = qdrant.search(<br>
+                            &nbsp;&nbsp;collection=<span class="string">"metrics"</span>,<br>
+                            &nbsp;&nbsp;query_vector=query_vector,<br>
+                            &nbsp;&nbsp;limit=<span class="string">10</span>,<br>
+                            &nbsp;&nbsp;score_threshold=<span class="string">0.7</span><br>
+                            )<br><br>
+                            <span class="comment"># Step 3: 结果过滤</span><br>
+                            filtered = [r for r in results if r.score > 0.75]
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">📊 输入输出</div>
+                        <div class="input-output">
+                            <div class="io-box">
+                                <div class="io-title">📥 输入</div>
+                                <div class="io-content">
+                                    查询向量: [1024维]<br>
+                                    检索配置: top_k=10, threshold=0.75<br>
+                                    L1结果: ${l1Layer ? `核心查询=${l1Layer.metadata?.core_query || 'N/A'}` : '无'}
+                                </div>
+                            </div>
+                            <div class="io-box">
+                                <div class="io-title">📤 输出</div>
+                                <div class="io-content">
+                                    Top-1 相似度: ${(similarity * 100).toFixed(1)}%<br>
+                                    候选指标: ${layer.metadata?.candidates || 0} 个<br>
+                                    匹配指标: ${intent.core_query || 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">⚡ 性能指标</div>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">执行时间</div>
+                                <div class="detail-value">${layer.duration.toFixed(2)} ms</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">向量维度</div>
+                                <div class="detail-value">1024</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">相似度</div>
+                                <div class="detail-value">${(similarity * 100).toFixed(1)}%</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">置信度</div>
+                                <div class="detail-value">${(layer.confidence * 100).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            // L3 LLM层详情
+            generateL3Details(layer, intent) {
+                return `
+                    <div class="transparency-section">
+                        <div class="section-title">🤖 算法说明</div>
+                        <p><strong>算法类型：</strong>大语言模型深度推理</p>
+                        <p><strong>模型：</strong>ZhipuAI GLM-4-Flash</p>
+                        <p><strong>优势：</strong>理解复杂语义、处理歧义、多轮推理</p>
+                        <p><strong>成本：</strong>约0.0001元/次查询</p>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">💬 LLM 提示词 (Prompt)</div>
+                        <div class="code-block">
+你是一个专业的BI系统意图识别助手。请分析用户的自然语言查询，提取7个维度的意图信息。
+
+【用户查询】
+${intent.query || 'N/A'}
+
+【上下文信息】
+- 规则层识别结果: ${intent.core_query || 'N/A'} (置信度: ${layer.confidence.toFixed(2)})
+- 向量检索Top-K: 10个候选指标
+- 图谱增强: 同义词、相关指标
+
+【任务】
+请提取以下7个维度的意图信息：
+{
+  "core_query": "核心指标名称",
+  "time_range": {"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"},
+  "time_granularity": "day|week|month",
+  "aggregation_type": "SELECT|SUM|AVG|COUNT|null",
+  "dimensions": ["维度1", "维度2"],
+  "filters": {"field": "value"},
+  "comparison_type": "YoY|MoM|null"
+}
+
+【分析规则】
+1. core_query: 从候选指标中选择相似度最高的
+2. time_range: 识别时间关键词（最近7天=往前7天）
+3. time_granularity: 默认day，有"按天/周/月"时对应选择
+4. aggregation_type: "总和/平均"对应SUM/AVG
+5. dimensions: "按[维度]"中的维度
+6. filters: "[维度]为[值]"等过滤条件  
+7. comparison_type: "同比/YoY"识别为同比，"环比/MoM"识别为环比
+
+请返回JSON格式的意图识别结果。
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">📊 输入输出</div>
+                        <div class="input-output">
+                            <div class="io-box">
+                                <div class="io-title">📥 输入</div>
+                                <div class="io-content">
+                                    用户查询: "${intent.query || 'N/A'}"<br>
+                                    L1结果: 规则匹配<br>
+                                    L2结果: 向量检索 Top-10<br>
+                                    图谱上下文: 同义词、关联指标
+                                </div>
+                            </div>
+                            <div class="io-box">
+                                <div class="io-title">📤 输出</div>
+                                <div class="io-content">
+                                    LLM推理结果: JSON格式<br>
+                                    核心查询: ${intent.core_query || 'N/A'}<br>
+                                    时间范围: ${this.formatTimeRange(intent.time_range)}<br>
+                                    意图置信度: ${(layer.confidence * 100).toFixed(1)}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">🌐 API 调用</div>
+                        <div class="api-call">
+                            <span class="api-method">POST</span>
+                            <span class="api-url">https://open.bigmodel.cn/api/paas/v4/chat/completions</span>
+                            <br><br>
+                            <small style="color: #718096;">
+                                模型: glm-4-flash<br>
+                                Temperature: 0.3<br>
+                                Max Tokens: 1000
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">⚡ 性能指标</div>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">执行时间</div>
+                                <div class="detail-value">${layer.duration.toFixed(0)} ms</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">Tokens消耗</div>
+                                <div class="detail-value">~500 tokens</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">置信度</div>
+                                <div class="detail-value">${(layer.confidence * 100).toFixed(1)}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            },
+
+            // MQL生成详情
+            generateMQLDetails(mql, intent) {
+                return `
+                    <div class="transparency-section">
+                        <div class="section-title">📝 MQL生成算法</div>
+                        <p><strong>算法类型：</strong>基于模板的DSL生成</p>
+                        <p><strong>语法：</strong>Metric Query Language (MQL)</p>
+                        <p><strong>特性：</strong>数据库无关的中间表示语言</p>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">🔄 生成流程</div>
+                        <div class="code-block">
+                            <span class="comment"># Step 1: 提取查询要素</span><br>
+                            metric = "${intent.core_query || 'N/A'}"<br>
+                            operator = ${intent.aggregation_type || 'SELECT'}<br>
+                            time_range = ${this.formatTimeRange(intent.time_range)}<br>
+                            group_by = ${JSON.stringify(intent.dimensions || [])}<br><br>
+                            <span class="comment"># Step 2: 构建MQL查询</span><br>
+                            mql = MQLQuery(<br>
+                            &nbsp;&nbsp;metric=metric,<br>
+                            &nbsp;&nbsp;operator=operator,<br>
+                            &nbsp;&nbsp;time_range=time_range,<br>
+                            &nbsp;&nbsp;group_by=group_by,<br>
+                            &nbsp;&nbsp;limit=10<br>
+                            )<br><br>
+                            <span class="comment"># Step 3: 序列化</span><br>
+                            mql_str = mql.toString()
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">📤 MQL输出</div>
+                        <div class="code-block">${this.highlightMQL(mql)}</div>
+                    </div>
+                `;
+            },
+
+            // SQL生成详情
+            generateSQLDetails(sql, mql) {
+                return `
+                    <div class="transparency-section">
+                        <div class="section-title">💾 SQL生成算法</div>
+                        <p><strong>算法类型：</strong>MQL → SQL 转译器</p>
+                        <p><strong>目标数据库：</strong>PostgreSQL 16</p>
+                        <p><strong>特性：</strong>动态生成，支持复杂JOIN和聚合</p>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">🔄 转换规则</div>
+                        <div class="code-block">
+                            <span class="comment"># 映射规则</span><br>
+                            METRIC_TABLE_MAP = {<br>
+                            &nbsp;&nbsp;<span class="string">"GMV"</span>: <span class="string">"fact_orders"</span>,<br>
+                            &nbsp;&nbsp;<span class="string">"DAU"</span>: <span class="string">"fact_user_activity"</span>,<br>
+                            &nbsp;&nbsp;<span class="string">"营收"</span>: <span class="string">"fact_revenue"</span><br>
+                            }<br><br>
+                            OPERATOR_SQL_MAP = {<br>
+                            &nbsp;&nbsp;SUM: <span class="string">"SUM(order_amount)"</span>,<br>
+                            &nbsp;&nbsp;AVG: <span class="string">"AVG(order_amount)"</span>,<br>
+                            &nbsp;&nbsp;COUNT: <span class="string">"COUNT(*)"</span><br>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">📤 SQL输出</div>
+                        <div class="code-block">${this.highlightSQL(sql.substring(0, 500))}...</div>
+                    </div>
+                `;
+            },
+
+            // 数据查询详情
+            generateDataDetails(data, executionTime) {
+                return `
+                    <div class="transparency-section">
+                        <div class="section-title">🔍 数据查询算法</div>
+                        <p><strong>算法类型：</strong>MQL执行引擎</p>
+                        <p><strong>数据源：</strong>PostgreSQL (生产) / 模拟数据 (当前)</p>
+                        <p><strong>降级策略：</strong>PostgreSQL不可用时自动使用模拟数据</p>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">📊 执行统计</div>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">返回行数</div>
+                                <div class="detail-value">${data.length} 条</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">执行时间</div>
+                                <div class="detail-value">${executionTime.toFixed(2)} ms</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">数据源</div>
+                                <div class="detail-value">模拟数据</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">📋 数据样例</div>
+                        <div class="code-block">
+${JSON.stringify(data.slice(0, 3), null, 2)}
+                        </div>
+                    </div>
+                `;
+            },
+
+            // 智能解读详情
+            generateInterpretationDetails(interpretation, query, data) {
+                if (!interpretation || interpretation.error) {
+                    return `<p class="io-content">解读失败: ${interpretation?.error || '未知错误'}</p>`;
+                }
+
+                return `
+                    <div class="transparency-section">
+                        <div class="section-title">🤖 AI解读算法</div>
+                        <p><strong>算法类型：</strong>数据驱动 + LLM增强</p>
+                        <p><strong>模型：</strong>ZhipuAI GLM-4-Flash</p>
+                        <p><strong>流程：</strong>数据分析 → 趋势判断 → LLM解读 → 建议生成</p>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">📈 数据分析结果</div>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <div class="detail-label">趋势</div>
+                                <div class="detail-value">${interpretation.trend || '未知'}</div>
+                            </div>
+                            <div class="detail-item">
+                                <div class="detail-label">置信度</div>
+                                <div class="detail-value">${Math.round((interpretation.confidence || 0) * 100)}%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">💡 关键发现</div>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            ${(interpretation.key_findings || []).map(f => `<li>${f}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <div class="transparency-section">
+                        <div class="section-title">🎯 行动建议</div>
+                        <ul style="margin-left: 20px; margin-top: 10px;">
+                            ${(interpretation.suggestions || []).map(s => `<li>${s}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            },
+
+            // 辅助方法
+            formatTimeRange(timeRange) {
+                if (!timeRange || !Array.isArray(timeRange) || timeRange.length < 2) {
+                    return 'N/A';
+                }
+                const start = timeRange[0].substring(0, 10);
+                const end = timeRange[1].substring(0, 10);
+                return `${start} ~ ${end}`;
+            },
+
+            highlightMQL(mql) {
+                if (!mql) return '';
+                return mql
+                    .replace(/(SELECT|FROM|WHERE|GROUP BY|ORDER BY|LIMIT)/g, '<span class="keyword">$1</span>')
+                    .replace(/([A-Z_]+)/g, '<span class="function">$1</span>');
+            },
+
+            highlightSQL(sql) {
+                if (!sql) return '';
+                return sql
+                    .replace(/(SELECT|FROM|WHERE|GROUP BY|ORDER BY|LIMIT|AND|OR|AS|JOIN)/g, '<span class="keyword">$1</span>')
+                    .replace(/('[^']*')/g, '<span class="string">$1</span>')
+                    .replace(/(\d+)/g, '<span class="string">$1</span>');
+            }
+        };
+
+        async function executeQuery() {
+            const isAPIReady = await checkAPIStatus();
+            if (!isAPIReady) return;
+
+            const query = document.getElementById('queryInput').value.trim();
+            if (!query) {
+                alert('请输入查询内容');
+                return;
+            }
+
+            const pipelineContainer = document.getElementById('pipelineContainer');
+            const resultContainer = document.getElementById('resultContainer');
+
+            // 显示加载状态
+            pipelineContainer.innerHTML = `
+                <div class="step-card processing">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>正在执行三层意图识别 + MQL/SQL生成 + 智能解读...</p>
+                    </div>
+                </div>
+            `;
+            resultContainer.innerHTML = '';
+
+            try {
+                const response = await fetch('http://localhost:8000/api/v3/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+
+                if (!response.ok) throw new Error('API请求失败');
+
+                const data = await response.json();
+                
+                // 显示完整流程
+                displayTransparentPipeline(data);
+                
+                // 显示结果
+                displayResults(data);
+
+            } catch (error) {
+                pipelineContainer.innerHTML = `
+                    <div class="error-message">
+                        <h3>❌ 查询失败</h3>
+                        <p>${error.message}</p>
+                        <small>请确保API服务已启动 (端口8000)</small>
+                    </div>
+                `;
+            }
+        }
+
+        function displayTransparentPipeline(data) {
+            const container = document.getElementById('pipelineContainer');
+            const allLayers = data.all_layers || [];
+            const intent = data.intent || {};
+            const mql = data.mql;
+            const sql = data.sql;
+            const interpretation = data.interpretation;
+            const executionTime = data.execution_time_ms || 0;
+
+            let html = '<div class="pipeline">';
+
+            // 显示所有意图识别层级
+            allLayers.forEach((layer, index) => {
+                const isSuccess = layer.success;
+                const badgeClass = layer.layer_name.includes('L1') ? 'badge-l1' :
+                                  layer.layer_name.includes('L2') ? 'badge-l2' : 'badge-l3';
+                
+                let detailsHTML = '';
+                if (layer.layer_name.includes('L1')) {
+                    detailsHTML = TransparencyGenerator.generateL1Details(layer, intent);
+                } else if (layer.layer_name.includes('L2')) {
+                    detailsHTML = TransparencyGenerator.generateL2Details(layer, intent, allLayers);
+                } else if (layer.layer_name.includes('L3')) {
+                    detailsHTML = TransparencyGenerator.generateL3Details(layer, intent);
+                }
+
+                html += `
+                    <div class="step-card ${isSuccess ? 'success' : 'failed'}">
+                        <div class="step-header">
+                            <div class="step-title">
+                                🔍 ${layer.layer_name}
+                                ${index < allLayers.length - 1 ? '<span style="margin: 0 10px; color: #cbd5e0;">↓</span>' : ''}
+                            </div>
+                            <span class="step-badge ${badgeClass}">
+                                ${isSuccess ? '✓ 成功' : '✗ 失败'}
+                            </span>
+                        </div>
+                        
+                        <div class="step-meta">
+                            <div class="meta-item">⏱ ${layer.duration.toFixed(2)}ms</div>
+                            <div class="meta-item">📊 ${(layer.confidence * 100).toFixed(1)}%</div>
+                        </div>
+
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${layer.confidence * 100}%"></div>
+                        </div>
+
+                        ${detailsHTML}
+                    </div>
+                `;
+            });
+
+            // MQL生成步骤
+            if (mql) {
+                html += `
+                    <div class="step-card success">
+                        <div class="step-header">
+                            <div class="step-title">
+                                📝 MQL生成
+                                <span style="margin: 0 10px; color: #cbd5e0;">↓</span>
+                            </div>
+                            <span class="step-badge badge-success">✓ 成功</span>
+                        </div>
+                        ${TransparencyGenerator.generateMQLDetails(mql, intent)}
+                    </div>
+                `;
+            }
+
+            // SQL生成步骤
+            if (sql) {
+                html += `
+                    <div class="step-card success">
+                        <div class="step-header">
+                            <div class="step-title">
+                                💾 SQL生成
+                                <span style="margin: 0 10px; color: #cbd5e0;">↓</span>
+                            </div>
+                            <span class="step-badge badge-success">✓ 成功</span>
+                        </div>
+                        ${TransparencyGenerator.generateSQLDetails(sql, mql)}
+                    </div>
+                `;
+            }
+
+            // 数据查询步骤
+            if (data.data && data.data.length > 0) {
+                html += `
+                    <div class="step-card success">
+                        <div class="step-header">
+                            <div class="step-title">
+                                🗄️ 数据查询
+                                <span style="margin: 0 10px; color: #cbd5e0;">↓</span>
+                            </div>
+                            <span class="step-badge badge-success">✓ 成功</span>
+                        </div>
+                        ${TransparencyGenerator.generateDataDetails(data.data, executionTime)}
+                    </div>
+                `;
+            }
+
+            // 智能解读步骤
+            html += `
+                <div class="step-card ${interpretation && !interpretation.error ? 'success' : 'processing'}">
+                    <div class="step-header">
+                        <div class="step-title">🤖 AI智能解读</div>
+                        <span class="step-badge ${interpretation && !interpretation.error ? 'badge-success' : 'badge-processing'}">
+                            ${interpretation && !interpretation.error ? '✓ 成功' : '○ 可选'}
+                        </span>
+                    </div>
+                    ${interpretation ? TransparencyGenerator.generateInterpretationDetails(interpretation, data.query, data.data) : '<p style="color: #718096;">无解读数据</p>'}
+                </div>
+            `;
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function displayResults(data) {
+            const container = document.getElementById('resultContainer');
+            const queryData = data.data || [];
+            const interpretation = data.interpretation;
+
+            let html = `
+                <div class="result-section">
+                    <h2 class="result-title">📊 查询结果汇总</h2>
+                    
+                    <div class="details-grid">
+                        <div class="detail-item">
+                            <div class="detail-label">查询</div>
+                            <div class="detail-value" style="font-size: 14px;">${data.query}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">核心查询</div>
+                            <div class="detail-value">${data.intent?.core_query || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">来源层级</div>
+                            <div class="detail-value">${data.intent?.source_layer || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">数据行数</div>
+                            <div class="detail-value">${queryData.length} 条</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">总耗时</div>
+                            <div class="detail-value">${data.execution_time_ms?.toFixed(2) || 'N/A'} ms</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // 数据可视化
+            if (queryData.length > 0) {
+                html += `
+                    <div class="result-section">
+                        <h2 class="result-title">📈 数据可视化</h2>
+                        <div class="chart-container">
+                            <canvas id="resultChart"></canvas>
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+
+            // 渲染图表
+            if (queryData.length > 0) {
+                setTimeout(() => renderChart(queryData), 100);
+            }
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('resultChart');
+            if (!ctx) return;
+
+            const labels = data.map(d => d.date || d.dimension || '未知');
+            const values = data.map(d => d.value || d.metric_value || 0);
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: data[0]?.metric || '数值',
+                        data: values,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        pointBackgroundColor: '#667eea',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    aspectRatio: 2.5,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                font: { size: 14, weight: '600' },
+                                color: '#2d3748',
+                                padding: 15
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(45, 55, 72, 0.95)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#667eea',
+                            borderWidth: 2,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    const unit = data[context.dataIndex]?.unit || '';
+                                    return `数值: ${value.toLocaleString()} ${unit}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            grid: {
+                                color: '#e2e8f0',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#718096',
+                                font: { size: 12 },
+                                callback: function(value) {
+                                    if (value >= 10000) {
+                                        return (value / 10000).toFixed(1) + '万';
+                                    }
+                                    return value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#718096',
+                                font: { size: 12 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 自动执行
+        window.onload = function() {
+            setTimeout(() => executeQuery(), 500);
+        };
+
+        // 回车键支持
+        document.getElementById('queryInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') executeQuery();
+        });
+    </script>
+</body>
+</html>

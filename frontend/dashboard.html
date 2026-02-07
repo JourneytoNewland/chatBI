@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能问数系统 - 统一管理平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .tab-btn {
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .feature-card {
+            transition: all 0.3s ease;
+        }
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-gradient-to-r from-indigo-600 to-purple-600 shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <span class="text-3xl">🔍</span>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">智能问数系统</h1>
+                        <p class="text-indigo-200 text-sm">统一管理平台</p>
+                    </div>
+                </div>
+                <div class="text-white text-sm">
+                    <span class="mr-4">⚡ 服务状态: <span class="text-green-300">运行中</span></span>
+                    <span>📊 后端: <a href="http://localhost:8000/docs" target="_blank" rel="noopener" class="underline hover:text-green-300">API文档</a></span>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Tab 导航 -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="flex space-x-2 mb-6 bg-white rounded-lg shadow p-2">
+            <button type="button" onclick="switchTab('search')" id="tab-search" class="tab-btn active flex-1 px-6 py-3 rounded-lg font-medium text-gray-700">
+                🔍 智能检索
+            </button>
+            <button type="button" onclick="switchTab('graph')" id="tab-graph" class="tab-btn flex-1 px-6 py-3 rounded-lg font-medium text-gray-700">
+                🔮 图谱管理
+            </button>
+            <button type="button" onclick="switchTab('intent')" id="tab-intent" class="tab-btn flex-1 px-6 py-3 rounded-lg font-medium text-gray-700">
+                🎯 意图分析
+            </button>
+        </div>
+
+        <!-- 版本切换提示 -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-center justify-between">
+            <div class="flex items-center">
+                <span class="text-2xl mr-3">✨</span>
+                <div>
+                    <div class="font-semibold text-blue-900">优化版本可用</div>
+                    <div class="text-sm text-blue-700">图谱管理和意图分析有新的 v2 版本，体验更好的可视化效果</div>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <a href="graph-management-v2.html" target="_blank" rel="noopener" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                    图谱 v2
+                </a>
+                <a href="intent-visualization-v2.html" target="_blank" rel="noopener" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                    意图 v2
+                </a>
+            </div>
+        </div>
+
+        <!-- Tab 1: 智能检索 -->
+        <div id="content-search" class="tab-content active">
+            <iframe id="search-frame" src="index.html" title="智能检索界面" class="w-full h-[800px] rounded-lg shadow-lg border-0"></iframe>
+        </div>
+
+        <!-- Tab 2: 图谱管理 -->
+        <div id="content-graph" class="tab-content">
+            <iframe id="graph-frame" src="graph-management.html" title="图谱管理界面" class="w-full h-[800px] rounded-lg shadow-lg border-0"></iframe>
+        </div>
+
+        <!-- Tab 3: 意图分析 -->
+        <div id="content-intent" class="tab-content">
+            <iframe id="intent-frame" src="intent-visualization.html" title="意图分析界面" class="w-full h-[800px] rounded-lg shadow-lg border-0"></iframe>
+        </div>
+    </div>
+
+    <!-- 底部统计栏 -->
+    <div class="container mx-auto px-4 pb-8">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">📊 系统概览</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="feature-card bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-lg">
+                    <div class="text-3xl mb-2">🔍</div>
+                    <div class="text-sm text-blue-600 font-medium">智能检索</div>
+                    <div class="text-xs text-blue-500 mt-1">支持趋势、排序、阈值过滤</div>
+                </div>
+                <div class="feature-card bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-lg">
+                    <div class="text-3xl mb-2">💬</div>
+                    <div class="text-sm text-purple-600 font-medium">多轮对话</div>
+                    <div class="text-xs text-purple-500 mt-1">支持指代解析和上下文</div>
+                </div>
+                <div class="feature-card bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-lg">
+                    <div class="text-3xl mb-2">🔮</div>
+                    <div class="text-sm text-green-600 font-medium">知识图谱</div>
+                    <div class="text-xs text-green-500 mt-1">可视化管理指标关系</div>
+                </div>
+                <div class="feature-card bg-gradient-to-br from-orange-50 to-orange-100 p-4 rounded-lg">
+                    <div class="text-3xl mb-2">⚡</div>
+                    <div class="text-sm text-orange-600 font-medium">实时性能</div>
+                    <div class="text-xs text-orange-500 mt-1">P99 < 600ms, QPS > 50</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速链接 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <a href="http://localhost:8000/docs" target="_blank" class="feature-card bg-white rounded-lg shadow p-4 flex items-center space-x-3 hover:bg-blue-50">
+                <span class="text-2xl">📚</span>
+                <div>
+                    <div class="font-medium text-gray-800">API 文档</div>
+                    <div class="text-xs text-gray-500">查看完整的 API 接口文档</div>
+                </div>
+            </a>
+            <a href="FRONTEND_GUIDE.md" target="_blank" class="feature-card bg-white rounded-lg shadow p-4 flex items-center space-x-3 hover:bg-green-50">
+                <span class="text-2xl">📖</span>
+                <div>
+                    <div class="font-medium text-gray-800">前端指南</div>
+                    <div class="text-xs text-gray-500">前端界面使用说明</div>
+                </div>
+            </a>
+            <a href="QUICK_START.md" target="_blank" class="feature-card bg-white rounded-lg shadow p-4 flex items-center space-x-3 hover:bg-purple-50">
+                <span class="text-2xl">🚀</span>
+                <div>
+                    <div class="font-medium text-gray-800">快速开始</div>
+                    <div class="text-xs text-gray-500">系统安装和配置指南</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            // 隐藏所有内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // 移除所有按钮的激活状态
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // 显示选中的内容
+            document.getElementById(`content-${tabName}`).classList.add('active');
+
+            // 激活选中的按钮
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+    </script>
+</body>
+</html>

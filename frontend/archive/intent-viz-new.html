@@ -232,14 +232,14 @@
                 type="text"
                 id="queryInput"
                 class="search-input"
-                value="最近7天华东地区的GMV"
+                value="最近7天的GMV"
                 placeholder="请输入查询，例如：最近7天的GMV"
             >
             <button class="search-button" onclick="executeQuery()">
                 🔍 分析查询
             </button>
             <div class="examples">
-                <button class="example-btn" onclick="setQuery('最近7天华东地区的GMV')">最近7天华东地区的GMV</button>
+                <button class="example-btn" onclick="setQuery('最近7天的GMV')">最近7天的GMV</button>
                 <button class="example-btn" onclick="setQuery('本月按渠道统计DAU')">本月按渠道统计DAU</button>
                 <button class="example-btn" onclick="setQuery('2024年1月的订单转化率')">2024年1月的订单转化率</button>
             </div>
@@ -356,22 +356,22 @@
 
             // 核心指标
             document.getElementById('coreQuery').innerHTML = 
-                `<strong>指标：</strong>\${intent.core_query}<br>
-                <strong>定义：</strong>\${metric?.description || 'N/A'}<br>
-                <strong>单位：</strong>\${metric?.unit || 'N/A'}`;
+                `<strong>指标：</strong>${intent.core_query}<br>
+                <strong>定义：</strong>${metric?.description || 'N/A'}<br>
+                <strong>单位：</strong>${metric?.unit || 'N/A'}`;
 
             // 时间范围
             if (intent.time_range) {
                 document.getElementById('timeRange').innerHTML = 
-                    `<strong>开始：</strong>\${intent.time_range.start}<br>
-                    <strong>结束：</strong>\${intent.time_range.end}<br>
-                    <strong>粒度：</strong>\${intent.time_granularity || 'N/A'}`;
+                    `<strong>开始：</strong>${intent.time_range.start}<br>
+                    <strong>结束：</strong>${intent.time_range.end}<br>
+                    <strong>粒度：</strong>${intent.time_granularity || 'N/A'}`;
             }
 
             // 聚合操作
             document.getElementById('aggregation').innerHTML = 
-                `<strong>操作符：</strong>\${intent.aggregation_type || '无'}<br>
-                <strong>计算类型：</strong>\${metric?.calculation_type || 'N/A'}`;
+                `<strong>操作符：</strong>${intent.aggregation_type || '无'}<br>
+                <strong>计算类型：</strong>${metric?.calculation_type || 'N/A'}`;
 
             // 维度
             const dims = intent.dimensions || [];
@@ -382,7 +382,7 @@
             const filters = intent.filters || {};
             document.getElementById('filters').innerHTML = 
                 Object.keys(filters).length > 0 ? 
-                Object.entries(filters).map(([k, v]) => `<strong>\${k}:</strong> \${JSON.stringify(v)}`).join('<br>') :
+                Object.entries(filters).map(([k, v]) => `<strong>${k}:</strong> ${JSON.stringify(v)}`).join('<br>') :
                 '无过滤条件';
 
             // 对比
@@ -392,7 +392,7 @@
             // 置信度
             const conf = 0.85 + Math.random() * 0.1;
             document.getElementById('confidence').innerHTML = 
-                `<div style="font-size: 24px; font-weight: 600; color: #667eea;">\${(conf * 100).toFixed(1)}%</div>`;
+                `<div style="font-size: 24px; font-weight: 600; color: #667eea;">${(conf * 100).toFixed(1)}%</div>`;
 
             // LLM提示词
             displayLLMPrompt(query, intent, metric);
@@ -402,12 +402,12 @@
             const prompt = `你是一个专业的BI系统意图识别助手。请分析用户的自然语言查询，提取7个维度的意图信息。
 
 【用户查询】
-\${query}
+${query}
 
 【上下文信息】
-- 向量检索Top-K候选指标：\${intent.core_query} (相似度: 0.95)
-- 图谱增强：同义词=[\${metric?.synonyms?.slice(0, 3).join(', ') || '无'}]
-- 相关指标：[\${metric?.related_metrics?.slice(0, 3).join(', ') || '无'}]
+- 向量检索Top-K候选指标：${intent.core_query} (相似度: 0.95)
+- 图谱增强：同义词=[${metric?.synonyms?.slice(0, 3).join(', ') || '无'}]
+- 相关指标：[${metric?.related_metrics?.slice(0, 3).join(', ') || '无'}]
 
 【任务】
 请提取以下7个维度的意图信息：

@@ -121,7 +121,11 @@ async def health_check() -> dict[str, str]:
 from src.api.routes import router
 from src.api.management_api import router as management_router
 from src.api.debug_routes import router as debug_router
+from src.api.v2_query_api import router as v2_router
+from src.api.complete_query import router as v3_router
 
 app.include_router(router, prefix="/api/v1", tags=["search"])
 app.include_router(management_router, tags=["data-management"])
 app.include_router(debug_router, tags=["debug"])
+app.include_router(v2_router, prefix="/api/v2", tags=["intelligent-query"])
+app.include_router(v3_router, prefix="/api/v3", tags=["complete-query"])

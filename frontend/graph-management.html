@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识图谱可视化管理 - 智能问数系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            font-size: 32px;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #718096;
+            font-size: 16px;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .suggestions-list {
+            margin-top: 20px;
+        }
+
+        .suggestion-item {
+            background: #fff5f5;
+            border-left: 4px solid #fc8181;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+        }
+
+        .suggestion-item.priority-high {
+            background: #fff5f5;
+            border-left-color: #fc8181;
+        }
+
+        .suggestion-item.priority-medium {
+            background: #fffaf0;
+            border-left-color: #f6ad55;
+        }
+
+        .suggestion-item.priority-low {
+            background: #f0fff4;
+            border-left-color: #68d391;
+        }
+
+        .suggestion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .suggestion-badge {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-high {
+            background: #fc8181;
+            color: white;
+        }
+
+        .badge-medium {
+            background: #f6ad55;
+            color: white;
+        }
+
+        .badge-low {
+            background: #68d391;
+            color: white;
+        }
+
+        .suggestion-message {
+            color: #2d3748;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .suggestion-action {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .btn-secondary:hover {
+            background: #cbd5e0;
+        }
+
+        .graph-container {
+            min-height: 400px;
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .graph-canvas {
+            width: 100%;
+            height: 100%;
+            min-height: 360px;
+        }
+
+        .node {
+            position: absolute;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        .node-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+
+        .node-type {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .relation-line {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transform-origin: left center;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-results {
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .search-result-item {
+            padding: 12px;
+            background: #f7fafc;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: #edf2f7;
+            transform: translateX(4px);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: #e2e8f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .entity-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .entity-item {
+            padding: 16px;
+            background: #f7fafc;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .entity-item:hover {
+            background: #edf2f7;
+            transform: translateX(4px);
+        }
+
+        .entity-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 6px;
+        }
+
+        .entity-meta {
+            font-size: 13px;
+            color: #718096;
+            line-height: 1.6;
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #edf2f7;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #4a5568;
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .relation-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-right: 6px;
+        }
+
+        .relation-SYNONYM {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .relation-RELATED_TO {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .relation-BELONGS_TO {
+            background: #fbd38d;
+            color: #744210;
+        }
+
+        .relation-CALCULATED_BY {
+            background: #e9d8fd;
+            color: #553c9a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🕸️ 知识图谱可视化管理</h1>
+            <p>企业级指标知识图谱 - 语义关系可视化与优化</p>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="search-box">
+            <input
+                type="text"
+                class="search-input"
+                id="searchInput"
+                placeholder="搜索指标、关系或同义词..."
+                oninput="debounceSearch(this.value)"
+            >
+            <div class="search-results" id="searchResults"></div>
+        </div>
+
+        <!-- 仪表板 -->
+        <div class="dashboard">
+            <!-- 左侧统计和建议 -->
+            <div>
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-title">📊 图谱统计</div>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <div class="stat-label">节点总数</div>
+                            <div class="stat-value" id="totalNodes">-</div>
+                        </div>
+                        <div class="stat-item" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <div class="stat-label">关系总数</div>
+                            <div class="stat-value" id="totalRelations">-</div>
+                        </div>
+                        <div class="stat-item" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                            <div class="stat-label">指标数量</div>
+                            <div class="stat-value" id="metricCount">-</div>
+                        </div>
+                        <div class="stat-item" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                            <div class="stat-label">业务域</div>
+                            <div class="stat-value" id="domainCount">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">💡 语义优化建议</div>
+                    <div class="suggestions-list" id="suggestionsList">
+                        <div class="loading">分析中...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧图谱可视化 -->
+            <div class="card">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('graph')">🕸️ 图谱视图</button>
+                    <button class="tab" onclick="switchTab('metrics')">📈 指标列表</button>
+                    <button class="tab" onclick="switchTab('relations')">🔗 关系列表</button>
+                </div>
+
+                <div class="tab-content active" id="tab-graph">
+                    <div class="graph-container">
+                        <div class="graph-canvas" id="graphCanvas">
+                            <div class="loading">加载图谱中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-metrics">
+                    <div class="entity-list" id="metricsList">
+                        <div class="loading">加载指标中...</div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-relations">
+                    <div class="entity-list" id="relationsList">
+                        <div class="loading">加载关系中...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+
+        // 模拟图谱数据
+        const MOCK_GRAPH = {
+            nodes: [
+                { id: 'gmv', name: 'GMV', type: 'Metric', description: '成交总额', domain: '电商' },
+                { id: 'dau', name: 'DAU', type: 'Metric', description: '日活跃用户数', domain: '用户' },
+                { id: 'mau', name: 'MAU', type: 'Metric', description: '月活跃用户数', domain: '用户' },
+                { id: 'arpu', name: 'ARPU', type: 'Metric', description: '平均每用户收入', domain: '营收' },
+                { id: 'conversion_rate', name: '转化率', type: 'Metric', description: '访客转化比例', domain: '营销' },
+                { id: 'ecommerce', name: '电商', type: 'Domain', description: '电商业务域' },
+                { id: 'user', name: '用户', type: 'Domain', description: '用户业务域' },
+                { id: 'revenue', name: '营收', type: 'Domain', description: '营收业务域' },
+            ],
+            relations: [
+                { source: 'gmv', target: 'ecommerce', type: 'BELONGS_TO' },
+                { source: 'dau', target: 'user', type: 'BELONGS_TO' },
+                { source: 'mau', target: 'user', type: 'BELONGS_TO' },
+                { source: 'arpu', target: 'revenue', type: 'BELONGS_TO' },
+                { source: 'conversion_rate', target: 'ecommerce', type: 'BELONGS_TO' },
+                { source: 'dau', target: 'mau', type: 'RELATED_TO' },
+                { source: 'gmv', target: 'arpu', type: 'RELATED_TO' },
+            ]
+        };
+
+        // 模拟优化建议
+        const MOCK_SUGGESTIONS = [
+            {
+                priority: 'high',
+                type: 'domain_annotation',
+                message: '指标 "GMV" 缺少详细的业务领域标注',
+                action: 'ADD_DOMAIN',
+                entities: ['GMV']
+            },
+            {
+                priority: 'medium',
+                type: 'synonym_link',
+                message: '建议将 "成交金额" 与 "GMV" 建立同义词关系',
+                action: 'CREATE_SYNONYM_LINK',
+                entities: ['GMV', '成交金额']
+            },
+            {
+                priority: 'medium',
+                type: 'formula_annotation',
+                message: '建议为指标 "DAU" 添加计算公式',
+                action: 'ADD_FORMULA',
+                entities: ['DAU']
+            },
+            {
+                priority: 'low',
+                type: 'example_enrichment',
+                message: '建议为指标 "MAU" 添加更多使用示例（当前1个）',
+                action: 'ADD_EXAMPLES',
+                entities: ['MAU']
+            },
+        ];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadGraphStatistics();
+            loadGraphVisualization();
+            loadSuggestions();
+            loadMetricsList();
+            loadRelationsList();
+        });
+
+        function loadGraphStatistics() {
+            // 模拟统计数据
+            setTimeout(() => {
+                document.getElementById('totalNodes').textContent = MOCK_GRAPH.nodes.length;
+                document.getElementById('totalRelations').textContent = MOCK_GRAPH.relations.length;
+                document.getElementById('metricCount').textContent = MOCK_GRAPH.nodes.filter(n => n.type === 'Metric').length;
+                document.getElementById('domainCount').textContent = MOCK_GRAPH.nodes.filter(n => n.type === 'Domain').length;
+            }, 500);
+        }
+
+        function loadGraphVisualization() {
+            const canvas = document.getElementById('graphCanvas');
+
+            // 创建节点
+            const positions = calculateNodePositions(MOCK_GRAPH.nodes);
+
+            let html = '';
+
+            // 先绘制连线
+            MOCK_GRAPH.relations.forEach(relation => {
+                const sourcePos = positions[relation.source];
+                const targetPos = positions[relation.target];
+
+                if (sourcePos && targetPos) {
+                    const line = createRelationLine(sourcePos, targetPos);
+                    html += line;
+                }
+            });
+
+            // 再绘制节点
+            MOCK_GRAPH.nodes.forEach(node => {
+                const pos = positions[node.id];
+                if (pos) {
+                    html += `
+                        <div class="node" style="left: ${pos.x}px; top: ${pos.y}px;" onclick="showNodeDetail('${node.id}')">
+                            <div class="node-name">${node.name}</div>
+                            <div class="node-type">${node.type}</div>
+                        </div>
+                    `;
+                }
+            });
+
+            canvas.innerHTML = html;
+        }
+
+        function calculateNodePositions(nodes) {
+            const positions = {};
+            const centerX = 400;
+            const centerY = 200;
+            const radius = 150;
+
+            nodes.forEach((node, i) => {
+                if (node.type === 'Domain') {
+                    // 领域节点放在中心
+                    positions[node.id] = { x: centerX + (i - 1) * 200, y: centerY + 100 };
+                } else {
+                    // 指标节点环绕
+                    const angle = (i / (nodes.length - 3)) * 2 * Math.PI;
+                    positions[node.id] = {
+                        x: centerX + Math.cos(angle) * radius,
+                        y: centerY + Math.sin(angle) * radius - 50
+                    };
+                }
+            });
+
+            return positions;
+        }
+
+        function createRelationLine(source, target) {
+            const length = Math.sqrt(Math.pow(target.x - source.x, 2) + Math.pow(target.y - source.y, 2));
+            const angle = Math.atan2(target.y - source.y, target.x - source.x) * 180 / Math.PI;
+
+            return `
+                <div class="relation-line" style="
+                    left: ${source.x}px;
+                    top: ${source.y}px;
+                    width: ${length}px;
+                    transform: rotate(${angle}deg);
+                "></div>
+            `;
+        }
+
+        function loadSuggestions() {
+            const container = document.getElementById('suggestionsList');
+
+            let html = '';
+            MOCK_SUGGESTIONS.forEach((suggestion, index) => {
+                html += `
+                    <div class="suggestion-item priority-${suggestion.priority}">
+                        <div class="suggestion-header">
+                            <span class="suggestion-badge badge-${suggestion.priority}">${suggestion.priority}</span>
+                        </div>
+                        <div class="suggestion-message">${suggestion.message}</div>
+                        <div class="suggestion-action">
+                            <button class="btn btn-primary" onclick="applySuggestion(${index})">应用建议</button>
+                            <button class="btn btn-secondary" onclick="dismissSuggestion(${index})">忽略</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html || '<div class="empty-state"><div class="empty-state-icon">✅</div><p>暂无优化建议</p></div>';
+        }
+
+        function loadMetricsList() {
+            const container = document.getElementById('metricsList');
+            const metrics = MOCK_GRAPH.nodes.filter(n => n.type === 'Metric');
+
+            let html = '';
+            metrics.forEach(metric => {
+                html += `
+                    <div class="entity-item" onclick="showNodeDetail('${metric.id}')">
+                        <div class="entity-name">${metric.name}</div>
+                        <div class="entity-meta">
+                            <span class="tag">${metric.type}</span>
+                            <span class="tag">${metric.domain}</span>
+                        </div>
+                        <div class="entity-meta" style="margin-top: 8px;">${metric.description}</div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function loadRelationsList() {
+            const container = document.getElementById('relationsList');
+
+            let html = '';
+            MOCK_GRAPH.relations.forEach(relation => {
+                const sourceNode = MOCK_GRAPH.nodes.find(n => n.id === relation.source);
+                const targetNode = MOCK_GRAPH.nodes.find(n => n.id === relation.target);
+
+                html += `
+                    <div class="entity-item">
+                        <div class="entity-name">
+                            ${sourceNode?.name || relation.source}
+                            →
+                            ${targetNode?.name || relation.target}
+                        </div>
+                        <div class="entity-meta">
+                            <span class="relation-badge relation-${relation.type}">${relation.type}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function switchTab(tabName) {
+            // 切换Tab
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // 切换内容
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+        }
+
+        function showNodeDetail(nodeId) {
+            const node = MOCK_GRAPH.nodes.find(n => n.id === nodeId);
+            if (node) {
+                alert(`节点详情：\n\n名称：${node.name}\n类型：${node.type}\n描述：${node.description}\n领域：${node.domain || '-'}`);
+            }
+        }
+
+        function applySuggestion(index) {
+            const suggestion = MOCK_SUGGESTIONS[index];
+            alert(`应用建议：${suggestion.action}\n\n涉及实体：${suggestion.entities.join(', ')}\n\n（实际应用时会调用图谱编辑API）`);
+        }
+
+        function dismissSuggestion(index) {
+            MOCK_SUGGESTIONS.splice(index, 1);
+            loadSuggestions();
+        }
+
+        let searchTimeout;
+        function debounceSearch(query) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                searchGraph(query);
+            }, 300);
+        }
+
+        function searchGraph(query) {
+            const container = document.getElementById('searchResults');
+
+            if (!query) {
+                container.innerHTML = '';
+                return;
+            }
+
+            const results = MOCK_GRAPH.nodes.filter(node =>
+                node.name.toLowerCase().includes(query.toLowerCase()) ||
+                node.description.toLowerCase().includes(query.toLowerCase())
+            );
+
+            if (results.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>未找到匹配结果</p></div>';
+                return;
+            }
+
+            let html = '';
+            results.forEach(node => {
+                html += `
+                    <div class="search-result-item" onclick="showNodeDetail('${node.id}')">
+                        <strong>${node.name}</strong>
+                        <div style="font-size: 13px; color: #718096; margin-top: 4px;">${node.description}</div>
+                        <div style="margin-top: 6px;">
+                            <span class="tag">${node.type}</span>
+                            ${node.domain ? `<span class="tag">${node.domain}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

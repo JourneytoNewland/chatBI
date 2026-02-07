@@ -3,6 +3,7 @@
 提供 Qdrant 的连接管理、Collection 创建、批量 upsert 和 ANN 检索功能.
 """
 
+import uuid
 from typing import Any, Optional
 
 import numpy as np
@@ -14,9 +15,23 @@ from qdrant_client.http.models import (
     UpdateStatus,
     VectorParams,
 )
-from qdrant_client.models import PayloadSchema
 
 from src.config import QdrantConfig
+
+
+def _string_to_uuid(s: str) -> uuid.UUID:
+    """将字符串转换为一致的 UUID（使用哈希）.
+
+    Args:
+        s: 输入字符串
+
+    Returns:
+        UUID 对象（相同字符串总是生成相同 UUID）
+    """
+    import hashlib
+    # 使用 SHA-256 哈希将字符串转换为 UUID
+    hash_bytes = hashlib.sha256(s.encode()).digest()[:16]
+    return uuid.UUID(bytes=hash_bytes)
 
 
 class QdrantVectorStore:
@@ -49,15 +64,17 @@ class QdrantVectorStore:
     def connect(self) -> QdrantClient:
         """建立连接.
 
+        使用 gRPC 接口以确保与 Qdrant 1.7.4 兼容。
+
         Returns:
-            QdrantClient 实例
+            QdrantClient 实例（使用 gRPC）
         """
         if self.client is None:
             self.client = QdrantClient(
-                url=self.config.http_url,
-                port=self.config.port,
+                url=self.config.grpc_url,
                 api_key=self.config.api_key,
                 timeout=self.config.timeout,
+                prefer_grpc=True,
             )
         return self.client
 
@@ -151,10 +168,10 @@ class QdrantVectorStore:
             v.tolist() if isinstance(v, np.ndarray) else v for v in vectors
         ]
 
-        # 构建点列表
+        # 构建点列表 - 使用 UUID 字符串格式的 ID（gRPC 要求）
         points = [
             PointStruct(
-                id=idx,
+                id=str(_string_to_uuid(str(idx))),  # 转换为 UUID 字符串
                 vector=vec,
                 payload=payload,
             )

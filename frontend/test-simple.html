@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单测试页面</title>
+</head>
+<body>
+    <h1>JavaScript函数测试</h1>
+
+    <button onclick="testFunction()">测试按钮</button>
+    <p id="output">等待测试...</p>
+
+    <script>
+        console.log('✅ Script loaded');
+
+        function testFunction() {
+            console.log('testFunction called');
+            document.getElementById('output').textContent = '✅ 函数工作正常！';
+            alert('JavaScript函数测试成功！');
+        }
+
+        console.log('Functions defined:', {
+            testFunction: typeof testFunction
+        });
+    </script>
+</body>
+</html>
