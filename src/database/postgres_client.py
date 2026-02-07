@@ -39,26 +39,21 @@ class PostgreSQLClient:
 
             if db_config is None:
                 logger.warning("PostgreSQL配置未找到，使用默认配置")
-                # 默认配置
-                db_config = {
-                    'host': 'localhost',
-                    'port': 5432,
-                    'database': 'chatbi',
-                    'user': 'postgres',
-                    'password': 'postgres'
-                }
+                # 创建默认配置
+                from src.config import PostgreSQLConfig
+                db_config = PostgreSQLConfig()
 
             self._pool = pool.SimpleConnectionPool(
                 minconn=1,
                 maxconn=10,
-                host=db_config.get('host', 'localhost'),
-                port=db_config.get('port', 5432),
-                database=db_config.get('database', 'chatbi'),
-                user=db_config.get('user', 'postgres'),
-                password=db_config.get('password', 'postgres')
+                host=db_config.host,
+                port=db_config.port,
+                database=db_config.database,
+                user=db_config.user,
+                password=db_config.password
             )
 
-            logger.info(f"✅ PostgreSQL连接池已创建: {db_config.get('database')}")
+            logger.info(f"✅ PostgreSQL连接池已创建: {db_config.database}")
 
         except Exception as e:
             logger.error(f"❌ PostgreSQL连接池创建失败: {e}")
