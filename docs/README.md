@@ -135,14 +135,24 @@ chatBI/
 
 ### 智谱AI API
 
-已配置的API Key（内置）：
-```python
-API_KEY = "f40789c75b7b4a27adb6360c264eae66.DaTbPSJZpbmf3JjT"
+**⚠️ 安全警告：严禁将API Key硬编码在代码中！**
+
+正确配置方式（环境变量）：
+```bash
+# 方式1: 命令行设置
+export ZHIPUAI_API_KEY="your-api-key"
+
+# 方式2: .env文件
+echo "ZHIPUAI_API_KEY=your-api-key" >> .env
+
+# 方式3: 运行时传入
+ZHIPUAI_API_KEY="your-api-key" python app.py
 ```
 
-如需更换，设置环境变量：
+配置验证：
 ```bash
-export ZHIPUAI_API_KEY="your-api-key"
+# 检查是否配置成功
+python -c "import os; print('✅ 配置成功' if os.getenv('ZHIPUAI_API_KEY') else '❌ 未配置')"
 ```
 
 ### 模型选择
