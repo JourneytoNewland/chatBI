@@ -158,3 +158,15 @@ data/
 *.csv
 *.json
 *.parquet
+
+# 安全敏感文件
+*.log
+*.log.*
+api_*.log
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.secret
+credentials.json
