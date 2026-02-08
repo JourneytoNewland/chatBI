@@ -1,9 +1,11 @@
 """FastAPI 应用主入口."""
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.config import settings
 from src.recall.graph.neo4j_client import Neo4jClient
@@ -127,5 +129,14 @@ from src.api.complete_query import router as v3_router
 app.include_router(router, prefix="/api/v1", tags=["search"])
 app.include_router(management_router, tags=["data-management"])
 app.include_router(debug_router, tags=["debug"])
-app.include_router(v2_router, prefix="/api/v2", tags=["intelligent-query"])
+app.include_router(v2_router, prefix="/api/v2", tags=["search-v2"])
 app.include_router(v3_router, prefix="/api/v3", tags=["complete-query"])
+
+# 挂载静态文件（前端）
+frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "frontend")
+if os.path.exists(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+    print(f"✅ 前端静态文件已挂载: {frontend_dir}")
+    print(f"📱 前端访问地址: http://localhost:8000")
+else:
+    print(f"⚠️  前端目录不存在: {frontend_dir}")
