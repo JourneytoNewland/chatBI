@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>根因分析测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 20px;
+            background: #f7fafc;
+        }
+        .test-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .test-button:hover {
+            background: #5a67d8;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            min-height: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 根因分析功能测试</h1>
+
+    <div>
+        <button class="test-button" onclick="testGMVDecline()">测试1: GMV下降分析</button>
+        <button class="test-button" onclick="testDAUGrowth()">测试2: DAU增长分析</button>
+        <button class="test-button" onclick="testWithAPICall()">测试3: 通过API调用</button>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+        // 模拟根因分析数据
+        const mockRootCauseData = {
+            "query": "为什么GMV下降了？",
+            "metric": "GMV",
+            "anomalies": [
+                {
+                    "timestamp": "2026-02-04",
+                    "value": 35000.0,
+                    "expected": 50000.0,
+                    "deviation": 15000.0,
+                    "deviation_pct": 30.0,
+                    "severity": "high",
+                    "type": "dip"
+                },
+                {
+                    "timestamp": "2026-02-05",
+                    "value": 30000.0,
+                    "expected": 50000.0,
+                    "deviation": 20000.0,
+                    "deviation_pct": 40.0,
+                    "severity": "high",
+                    "type": "dip"
+                }
+            ],
+            "dimensions": [
+                {
+                    "dimension_name": "地区",
+                    "total_value": 1000000.0,
+                    "top_contributors": [
+                        {"name": "华东", "value": 500000.0, "contribution_pct": 50.0},
+                        {"name": "华南", "value": 300000.0, "contribution_pct": 30.0},
+                        {"name": "华北", "value": 200000.0, "contribution_pct": 20.0}
+                    ],
+                    "analysis": "地区维度高度集中，华东占比50.0%"
+                }
+            ],
+            "trends": {
+                "trend_type": "downward",
+                "trend_strength": 0.76,
+                "slope": -2500.0,
+                "r_squared": 0.85,
+                "turning_points": [],
+                "forecast": [28500, 26000, 23500]
+            },
+            "causal_factors": [
+                {
+                    "name": "供应链问题",
+                    "category": "internal",
+                    "confidence": 0.85,
+                    "evidence": ["库存不足", "物流延迟"],
+                    "explanation": "供应链中断会导致商品缺货，直接影响销售额",
+                    "actionable": true
+                },
+                {
+                    "name": "市场竞争",
+                    "category": "external",
+                    "confidence": 0.70,
+                    "evidence": ["竞品促销", "价格战"],
+                    "explanation": "竞争对手的促销活动可能分流客户",
+                    "actionable": true
+                }
+            ],
+            "report": "GMV整体呈现downward趋势，趋势强度为0.76。\n主要原因是供应链问题、市场竞争。\n- 供应链问题：供应链中断会导致商品缺货，直接影响销售额\n- 市场竞争：竞争对手的促销活动可能分流客户\n建议优先处理供应链问题问题，这将有助于改善GMV表现。",
+            "recommendations": [
+                "检查库存水平和供应链状态，确保商品供应充足",
+                "优化地区结构，降低对华东的过度依赖"
+            ]
+        };
+
+        function testGMVDecline() {
+            displayResult(mockRootCauseData);
+        }
+
+        function testDAUGrowth() {
+            const dauData = {
+                ...mockRootCauseData,
+                "query": "为什么DAU突然增长了？",
+                "metric": "DAU",
+                "trends": {
+                    "trend_type": "upward",
+                    "trend_strength": 0.91,
+                    "slope": 2500.0,
+                    "r_squared": 0.88,
+                    "turning_points": [],
+                    "forecast": [21500, 24000, 26500]
+                },
+                "causal_factors": [
+                    {
+                        "name": "营销活动",
+                        "category": "internal",
+                        "confidence": 0.95,
+                        "evidence": ["新渠道投放", "病毒传播"],
+                        "explanation": "营销推广通常会带来短期内用户增长",
+                        "actionable": true
+                    },
+                    {
+                        "name": "产品优化",
+                        "category": "internal",
+                        "confidence": 0.85,
+                        "evidence": ["新功能", "体验优化"],
+                        "explanation": "产品体验提升会吸引更多用户使用",
+                        "actionable": true
+                    }
+                ],
+                "report": "DAU整体呈现upward趋势，趋势强度为0.91。\n主要原因是营销活动、产品优化。\n建议优先处理营销活动问题，这将有助于改善DAU表现。",
+                "recommendations": [
+                    "优化营销策略，提升渠道投放效率",
+                    "持续产品创新，提升用户体验和粘性"
+                ]
+            };
+            displayResult(dauData);
+        }
+
+        async function testWithAPICall() {
+            try {
+                const response = await fetch('http://localhost:8000/api/v3/query', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({query: '分析GMV'})
+                });
+
+                if (!response.ok) {
+                    throw new Error('API请求失败');
+                }
+
+                const data = await response.json();
+                console.log('API Response:', data);
+
+                document.getElementById('result').innerHTML = `
+                    <h2>API响应</h2>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h2>错误</h2>
+                    <p style="color: #f56565;">${error.message}</p>
+                `;
+            }
+        }
+
+        function displayResult(rootCause) {
+            let html = '<div style="display: flex; flex-direction: column; gap: 24px;">';
+
+            // 分析报告卡片
+            html += `
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; padding: 24px;">
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">🔍 根因分析报告</div>
+                    <div style="font-size: 18px; font-weight: 700; line-height: 1.6; white-space: pre-wrap;">${rootCause.report}</div>
+                </div>
+            `;
+
+            // 异常检测
+            if (rootCause.anomalies && rootCause.anomalies.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">⚠️ 检测到的异常</div>
+                `;
+
+                rootCause.anomalies.forEach(anomaly => {
+                    const severityColor = {
+                        'high': '#f56565',
+                        'medium': '#ed8936',
+                        'low': '#48bb78'
+                    }[anomaly.severity] || '#718096';
+
+                    const typeIcon = {
+                        'spike': '📈',
+                        'dip': '📉',
+                        'high': '⬆️',
+                        'low': '⬇️'
+                    }[anomaly.type] || '❓';
+
+                    html += `
+                        <div style="background: ${severityColor}10; border-left: 4px solid ${severityColor}; padding: 16px; border-radius: 8px; margin-bottom: 12px;">
+                            <div style="font-size: 20px; margin-bottom: 8px;">${typeIcon}</div>
+                            <div style="font-size: 14px; font-weight: 600; color: #2d3748; margin-bottom: 4px;">
+                                ${anomaly.timestamp}
+                            </div>
+                            <div style="font-size: 13px; color: #718096;">
+                                实际值: ${anomaly.value.toFixed(2)} | 期望值: ${anomaly.expected.toFixed(2)}
+                            </div>
+                            <div style="font-size: 13px; color: ${severityColor}; font-weight: 600; margin-top: 4px;">
+                                偏离度: ${anomaly.deviation_pct.toFixed(1)}%
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div>';
+            }
+
+            // 趋势分析
+            if (rootCause.trends) {
+                const trend = rootCause.trends;
+                const trendIcon = {
+                    'upward': '📈',
+                    'downward': '📉',
+                    'stable': '➡️',
+                    'volatile': '📊'
+                }[trend.trend_type] || '❓';
+
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">📈 趋势分析</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div style="background: #f7fafc; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px;">${trendIcon}</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 8px;">趋势类型</div>
+                                <div style="font-size: 16px; font-weight: 600; color: #2d3748;">${trend.trend_type}</div>
+                            </div>
+                            <div style="background: #f7fafc; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px;">${(trend.trend_strength * 100).toFixed(0)}%</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 8px;">趋势强度</div>
+                            </div>
+                            <div style="background: #f7fafc; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px;">${trend.slope.toFixed(2)}</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 8px;">斜率</div>
+                            </div>
+                            <div style="background: #f7fafc; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px;">${(trend.r_squared * 100).toFixed(1)}%</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 8px;">拟合度</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 维度分解
+            if (rootCause.dimensions && rootCause.dimensions.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">📊 维度分解分析</div>
+                `;
+
+                rootCause.dimensions.forEach(dim => {
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 16px; background: #f7fafc; border-radius: 10px;">
+                            <div style="font-size: 16px; font-weight: 600; color: #2d3748; margin-bottom: 12px;">${dim.dimension_name}维度</div>
+                            <div style="font-size: 13px; color: #48bb78; margin-bottom: 16px;">${dim.analysis}</div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                    `;
+
+                    dim.top_contributors.forEach(contributor => {
+                        const pct = contributor.contribution_pct;
+                        html += `
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 100px; font-size: 13px; color: #2d3748; font-weight: 500;">${contributor.name}</div>
+                                <div style="flex: 1; background: #e2e8f0; height: 20px; border-radius: 10px; position: relative; overflow: hidden;">
+                                    <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${pct}%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);"></div>
+                                </div>
+                                <div style="width: 60px; font-size: 13px; color: #667eea; font-weight: 600; text-align: right;">${pct.toFixed(1)}%</div>
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    </div>
+                `;
+            }
+
+            // 因果推断
+            if (rootCause.causal_factors && rootCause.causal_factors.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">🔗 潜在原因分析</div>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                `;
+
+                rootCause.causal_factors.forEach(factor => {
+                    const categoryColor = {
+                        'internal': '#4299e1',
+                        'external': '#ed8936',
+                        'structural': '#48bb78'
+                    }[factor.category] || '#718096';
+
+                    const categoryIcon = {
+                        'internal': '🏢',
+                        'external': '🌍',
+                        'structural': '🏗️'
+                    }[factor.category] || '❓';
+
+                    html += `
+                        <div style="border: 2px solid ${categoryColor}; border-radius: 10px; padding: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 24px;">${categoryIcon}</span>
+                                    <div style="font-size: 16px; font-weight: 700; color: #2d3748;">${factor.name}</div>
+                                </div>
+                                <div style="font-size: 14px; padding: 4px 12px; background: ${categoryColor}; color: white; border-radius: 6px; font-weight: 600;">
+                                    ${(factor.confidence * 100).toFixed(0)}% 置信度
+                                </div>
+                            </div>
+                            <div style="font-size: 13px; color: #718096; line-height: 1.6; margin-bottom: 12px;">
+                                ${factor.explanation}
+                            </div>
+                            <div style="font-size: 12px; color: #718096;">
+                                <strong>证据：</strong>
+                                ${factor.evidence.map(e => `<span style="display: inline-block; background: #f7fafc; padding: 2px 8px; border-radius: 4px; margin: 2px;">${e}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 行动建议
+            if (rootCause.recommendations && rootCause.recommendations.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #48bb78; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">💡 行动建议</div>
+                        <ul style="margin: 0; padding-left: 20px;">
+                `;
+
+                rootCause.recommendations.forEach(rec => {
+                    html += `
+                        <li style="margin-bottom: 8px; font-size: 14px; color: #2d3748; line-height: 1.6;">${rec}</li>
+                    `;
+                });
+
+                html += `
+                        </ul>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            document.getElementById('result').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

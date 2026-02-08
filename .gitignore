@@ -7,10 +7,13 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.venv/
+venv/
 
 # 环境变量
 .env
 .env.local
+.env.production
 
 # IDE
 .vscode/

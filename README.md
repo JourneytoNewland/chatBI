@@ -38,6 +38,18 @@
 - **洞察生成** - 基于LLM的业务洞察
 - **建议推荐** - 数据驱动的决策建议
 
+### 🔍 根因分析（NEW!）
+- **智能异常检测** - 3σ原则、IQR四分位法、移动平均
+- **维度分解** - 贡献度分析、帕累托分析
+- **趋势分析** - 线性回归、R²拟合、转折点检测
+- **因果推断** - 业务规则引擎、置信度量化
+- **可视化展示** - 异常卡片、趋势图表、因果因素、行动建议
+
+**使用示例**：
+- "为什么GMV最近下降了？"
+- "分析DAU下降的原因"
+- "转化率怎么了"
+
 ## 🚀 快速开始
 
 ### 1. 环境准备
@@ -277,9 +289,18 @@ pytest --cov=src --cov-report=html
 
 ## 📚 文档
 
+### 核心功能
+- [根因分析使用指南](docs/ROOT_CAUSE_USAGE.md) - L4层根因分析完整文档
 - [PostgreSQL集成指南](docs/POSTGRESQL_INTEGRATION.md) - 数据仓库架构
+- [意图识别文档](docs/intent_recognition_summary.md) - 三层混合意图识别
+- [MQL系统文档](docs/MQL_SYSTEM_SUMMARY.md) - MQL引擎与SQL生成
+
+### 运维监控
 - [监控系统指南](monitoring/README.md) - Prometheus + Grafana
 - [性能测试指南](tests/performance/README.md) - 基准测试与压力测试
+- [安全最佳实践](docs/SECURITY_BEST_PRACTICES.md) - 安全配置与审计
+
+### 历史文档
 - [历史文档归档](docs/archive/) - 开发过程文档
 
 ## 🤝 贡献

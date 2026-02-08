@@ -738,6 +738,10 @@
                 <div class="module-tab-icon">⚖️</div>
                 <div class="module-tab-name">融合精排详情</div>
             </div>
+            <div class="module-tab" onclick="switchModule('root-cause', event)">
+                <div class="module-tab-icon">🔍</div>
+                <div class="module-tab-name">根因分析</div>
+            </div>
             <div class="module-tab" onclick="switchModule('llm', event)">
                 <div class="module-tab-icon">🤖</div>
                 <div class="module-tab-name">大语言模型模块</div>
@@ -805,6 +809,10 @@
                 <div class="example-chip" onclick="setQuery('本月按渠道统计DAU')">本月按渠道统计DAU</div>
                 <div class="example-chip" onclick="setQuery('按地区统计GMV')">按地区统计GMV</div>
                 <div class="example-chip" onclick="setQuery('2024年1月的营收环比')">2024年1月的营收环比</div>
+                <div class="example-chip" onclick="setQuery('销售趋势')">销售趋势</div>
+                <div class="example-chip" onclick="setQuery('用户增长情况')">用户增长情况</div>
+                <div class="example-chip" onclick="setQuery('各地区的转化率对比')">各地区的转化率对比</div>
+                <div class="example-chip" onclick="setQuery('客单价变化趋势')">客单价变化趋势</div>
             </div>
         </div>
 
@@ -845,6 +853,14 @@
             <h2 style="color: #667eea; margin-bottom: 20px;">⚖️ 融合精排详情</h2>
             <div id="ranking-content">
                 <p style="color: #718096;">请先执行查询以查看精排详细流程...</p>
+            </div>
+        </div>
+
+        <!-- 根因分析模块 -->
+        <div id="root-cause-module" class="module-content">
+            <h2 style="color: #667eea; margin-bottom: 20px;">🔍 根因分析</h2>
+            <div id="root-cause-content">
+                <p style="color: #718096;">请执行包含"为什么"、"分析"等关键词的查询以查看根因分析...</p>
             </div>
         </div>
 
@@ -1117,6 +1133,7 @@
                 else if (moduleName === 'intent-flow') displayIntentFlowModule(queryData);
                 else if (moduleName === 'fusion') displayFusionModule(queryData);
                 else if (moduleName === 'ranking') displayRankingModule(queryData);
+                else if (moduleName === 'root-cause') displayRootCauseModule(queryData);
             }
         }
 
@@ -1138,7 +1155,7 @@
             }
 
             // 显示加载状态
-            const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content', 'intent-flow-content', 'fusion-content', 'ranking-content'];
+            const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content', 'intent-flow-content', 'fusion-content', 'ranking-content', 'root-cause-content'];
             contentIds.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -1187,13 +1204,14 @@
                 displayGraphModule(data);
                 displayFusionModule(data);
                 displayRankingModule(data);
+                displayRootCauseModule(data);
                 displayLLMModule(data);
                 displayMQLModule(data);
                 displayDataModule(data);
                 displayResultModule(data);
 
             } catch (error) {
-                const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content', 'intent-flow-content', 'fusion-content', 'ranking-content'];
+                const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content', 'intent-flow-content', 'fusion-content', 'ranking-content', 'root-cause-content'];
                 contentIds.forEach(id => {
                     const el = document.getElementById(id);
                     if (el) {
@@ -1921,19 +1939,33 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
             }
 
             const metadata = l2Layer.metadata;
-            const method = metadata.method || '未知';
-            const candidatesFound = metadata.candidates_found || 0;
-            const topScore = metadata.top_score || 0;
+            const recallType = metadata.recall_type || '未知';
+            const fusionStats = metadata.fusion_stats || {};
+            const sourceDistribution = metadata.source_distribution || {vector: 0, graph: 0, both: 0};
+            const totalCandidates = fusionStats.total_candidates || 0;
+            const vectorAvgScore = fusionStats.vector_avg_score || 0;
+            const graphAvgScore = fusionStats.graph_avg_score || 0;
 
             let html = '<div style="display: flex; flex-direction: column; gap: 20px;">';
 
-            // 召回方法卡片
+            // 召回方法卡片（支持双路召回）
+            const methodDisplay = recallType === 'dual_recall' ? '双路召回融合' :
+                                 recallType === 'vector_only' ? '向量召回' :
+                                 recallType === 'graph_only' ? '图谱召回' :
+                                 recallType === 'semantic_fallback' ? '语义降级' : '未知';
+            const methodColor = recallType === 'dual_recall' ?
+                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' :
+                'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)';
+            const methodDesc = recallType === 'dual_recall' ?
+                '并行执行向量召回和图谱召回，融合去重后返回最优候选' :
+                '使用语义向量检索进行候选指标召回';
+
             html += `
-                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; padding: 24px;">
+                <div style="background: ${methodColor}; color: white; border-radius: 12px; padding: 24px;">
                     <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">召回方法</div>
-                    <div style="font-size: 28px; font-weight: 700;">${method}</div>
+                    <div style="font-size: 28px; font-weight: 700;">${methodDisplay}</div>
                     <div style="margin-top: 12px; font-size: 14px; opacity: 0.85;">
-                        使用语义向量检索进行候选指标召回
+                        ${methodDesc}
                     </div>
                 </div>
             `;
@@ -1942,42 +1974,108 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
             html += `
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     <div style="background: #f7fafc; padding: 20px; border-radius: 12px; text-align: center;">
-                        <div style="font-size: 36px; font-weight: 700; color: #667eea;">${candidatesFound}</div>
+                        <div style="font-size: 36px; font-weight: 700; color: #667eea;">${totalCandidates}</div>
                         <div style="font-size: 14px; color: #718096; margin-top: 5px;">候选指标数</div>
                     </div>
                     <div style="background: #f7fafc; padding: 20px; border-radius: 12px; text-align: center;">
-                        <div style="font-size: 36px; font-weight: 700; color: #48bb78;">${(topScore * 100).toFixed(1)}%</div>
-                        <div style="font-size: 14px; color: #718096; margin-top: 5px;">最高相似度</div>
+                        <div style="font-size: 36px; font-weight: 700; color: #48bb78;">${(vectorAvgScore * 100).toFixed(1)}%</div>
+                        <div style="font-size: 14px; color: #718096; margin-top: 5px;">向量平均分</div>
+                    </div>
+                    <div style="background: #f7fafc; padding: 20px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 36px; font-weight: 700; color: #4299e1;">${(graphAvgScore * 100).toFixed(1)}%</div>
+                        <div style="font-size: 14px; color: #718096; margin-top: 5px;">图谱平均分</div>
                     </div>
                 </div>
             `;
 
-            // 召回流程说明
+            // 来源分布（仅双路召回显示）
+            if (recallType === 'dual_recall') {
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px;">📊 召回来源分布</div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                            <div style="background: #ebf8ff; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #4299e1;">${sourceDistribution.vector}</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 5px;">向量召回</div>
+                            </div>
+                            <div style="background: #faf5ff; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #805ad5;">${sourceDistribution.graph}</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 5px;">图谱召回</div>
+                            </div>
+                            <div style="background: #f0fff4; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px; font-weight: 700; color: #48bb78;">${sourceDistribution.both}</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 5px;">双重召回</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 召回流程说明（根据召回类型动态显示）
+            const isDualRecall = recallType === 'dual_recall';
             html += `
                 <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
                     <div style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px;">📊 召回流程</div>
                     <div style="display: flex; flex-direction: column; gap: 12px;">
+                        ${isDualRecall ? `
                         <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">1</div>
+                            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">1</div>
                             <div style="flex: 1;">
-                                <div style="font-weight: 600; color: #2d3748;">查询向量化</div>
-                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">使用 m3e-base 模型将自然语言查询转换为向量表示</div>
+                                <div style="font-weight: 600; color: #2d3748;">并行双路召回</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">同时启动向量召回和图谱召回，充分利用语义和结构信息</div>
                             </div>
                         </div>
                         <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">2</div>
+                            <div style="background: #4299e1; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">2a</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">向量召回路</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">使用 BAAI/bge-m3 模型向量化查询，在 Qdrant 中检索相似指标</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #805ad5; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">2b</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">图谱召回路</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">基于 Neo4j 知识图谱，通过同义词、层次、关联等多策略召回</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #48bb78; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">3</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">融合去重</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">合并双路结果，按来源加权（向量70% + 图谱30%），去重后排序</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #ed8936; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">4</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">Top-K 返回</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">返回融合后的 Top-K 候选指标，进入精排层</div>
+                            </div>
+                        </div>
+                        ` : `
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #ed8936; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">1</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">查询向量化</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">使用 BAAI/bge-m3 模型将自然语言查询转换为向量表示</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #ed8936; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">2</div>
                             <div style="flex: 1;">
                                 <div style="font-weight: 600; color: #2d3748;">向量相似度检索</div>
                                 <div style="font-size: 13px; color: #718096; margin-top: 4px;">在 Qdrant 向量数据库中检索最相似的指标定义</div>
                             </div>
                         </div>
                         <div style="display: flex; align-items: flex-start; gap: 12px;">
-                            <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">3</div>
+                            <div style="background: #ed8936; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">3</div>
                             <div style="flex: 1;">
                                 <div style="font-weight: 600; color: #2d3748;">Top-K 候选返回</div>
                                 <div style="font-size: 13px; color: #718096; margin-top: 4px;">返回相似度最高的 Top-10 候选指标</div>
                             </div>
                         </div>
+                        `}
                     </div>
                 </div>
             `;
@@ -1999,20 +2097,102 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
                 return;
             }
 
+            const metadata = l2Layer.metadata;
+            const candidates = metadata.candidates || [];
+            const featureWeights = metadata.feature_weights || {};
+
             let html = '<div style="display: flex; flex-direction: column; gap: 20px;">';
+
+            // 如果有候选指标数据，显示排名和特征得分
+            if (candidates.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #48bb78; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 20px;">🏆 候选指标排名（Top-${candidates.length}）</div>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                `;
+
+                candidates.forEach((candidate, index) => {
+                    const rank = candidate.rank || index + 1;
+                    const name = candidate.name || '未知';
+                    const finalScore = candidate.final_score || 0;
+                    const source = candidate.source || 'unknown';
+                    const featureScores = candidate.feature_scores || {};
+
+                    // 来源标签样式
+                    const sourceStyle = source === 'both' ?
+                        'background: linear-gradient(90deg, #4299e1 0%, #805ad5 100%);' :
+                        source === 'vector' ? 'background: #4299e1;' :
+                        source === 'graph' ? 'background: #805ad5;' : 'background: #a0aec0;';
+                    const sourceText = source === 'both' ? '双重召回' :
+                                     source === 'vector' ? '向量召回' :
+                                     source === 'graph' ? '图谱召回' : '未知';
+
+                    html += `
+                        <div style="background: #f7fafc; border-radius: 10px; padding: 16px; border-left: 4px solid #48bb78;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="background: #48bb78; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700;">${rank}</div>
+                                    <div style="font-size: 18px; font-weight: 700; color: #2d3748;">${name}</div>
+                                    <span style="${sourceStyle} color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px;">${sourceText}</span>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 24px; font-weight: 700; color: #48bb78;">${(finalScore * 100).toFixed(1)}%</div>
+                                    <div style="font-size: 12px; color: #718096;">融合得分</div>
+                                </div>
+                            </div>
+                    `;
+
+                    // 显示前5个最重要的特征
+                    const topFeatures = Object.entries(featureScores)
+                        .sort((a, b) => b[1].score - a[1].score)
+                        .slice(0, 5);
+
+                    if (topFeatures.length > 0) {
+                        html += `
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+                        `;
+
+                        topFeatures.forEach(([featureName, featureData]) => {
+                            const value = featureData.value || 0;
+                            const weight = featureData.weight || 0;
+                            const score = featureData.score || 0;
+                            const percent = (value * 100).toFixed(1);
+
+                            html += `
+                                <div style="background: white; padding: 10px; border-radius: 8px;">
+                                    <div style="font-size: 11px; color: #718096; margin-bottom: 4px;">${featureName}</div>
+                                    <div style="display: flex; align-items: baseline; gap: 6px;">
+                                        <span style="font-size: 16px; font-weight: 600; color: #2d3748;">${percent}%</span>
+                                        <span style="font-size: 10px; color: #a0aec0;">×${weight}</span>
+                                    </div>
+                                    <div style="width: 100%; background: #e2e8f0; height: 4px; border-radius: 2px; margin-top: 6px;">
+                                        <div style="width: ${percent}%; background: linear-gradient(90deg, #48bb78 0%, #38a169 100%); height: 100%; border-radius: 2px;"></div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+
+                        html += '</div>';
+                    }
+
+                    html += '</div>';
+                });
+
+                html += '</div></div>';
+            }
 
             // 11维特征说明
             const features = [
-                { name: '向量相似度', icon: '🧠', desc: '查询与指标的语义相似度' },
-                { name: '图谱分数', icon: '🕸️', desc: '基于知识图谱的关系强度' },
-                { name: '指标重要性', icon: '⭐', desc: '指标在业务中的重要程度' },
-                { name: '查询词覆盖率', icon: '📝', desc: '查询词在指标中的覆盖比例' },
-                { name: '精确匹配', icon: '🎯', desc: '查询是否与指标精确匹配' },
-                { name: '前缀匹配', icon: '📌', desc: '查询是否与指标前缀匹配' },
-                { name: '领域匹配', icon: '🏷️', desc: '查询与指标领域的匹配度' },
-                { name: '召回来源', icon: '📍', desc: '指标的召回渠道标识' },
-                { name: '组合分数', icon: '🔀', desc: '多维度特征的加权融合' },
-                { name: '文本相关性', icon: '📄', desc: '基于文本的相关性计算' },
+                { name: '向量相似度', icon: '🧠', desc: '查询与指标的语义相似度', weight: featureWeights.VectorSimilarityExtractor || 0.3 },
+                { name: '图谱分数', icon: '🕸️', desc: '基于知识图谱的关系强度', weight: featureWeights.GraphScoreExtractor || 0.15 },
+                { name: '指标重要性', icon: '⭐', desc: '指标在业务中的重要程度', weight: featureWeights.ImportanceExtractor || 0.1 },
+                { name: '查询词覆盖率', icon: '📝', desc: '查询词在指标中的覆盖比例', weight: featureWeights.QueryCoverageExtractor || 0.08 },
+                { name: '精确匹配', icon: '🎯', desc: '查询是否与指标精确匹配', weight: featureWeights.ExactMatchExtractor || 0.15 },
+                { name: '前缀匹配', icon: '📌', desc: '查询是否与指标前缀匹配', weight: featureWeights.PrefixMatchExtractor || 0.05 },
+                { name: '领域匹配', icon: '🏷️', desc: '查询与指标领域的匹配度', weight: featureWeights.DomainMatchExtractor || 0.05 },
+                { name: '召回来源', icon: '📍', desc: '指标的召回渠道标识', weight: featureWeights.RecallSourceExtractor || 0.02 },
+                { name: '组合分数', icon: '🔀', desc: '多维度特征的加权融合', weight: featureWeights.CombinedScoreExtractor || 0.05 },
+                { name: '文本相关性', icon: '📄', desc: '基于文本的相关性计算', weight: featureWeights.TextRelevanceExtractor || 0.05 },
             ];
 
             html += `
@@ -2024,9 +2204,12 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
             features.forEach(feature => {
                 html += `
                     <div style="background: #f7fafc; padding: 16px; border-radius: 10px; border-left: 4px solid #667eea;">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                            <span style="font-size: 24px;">${feature.icon}</span>
-                            <div style="font-size: 15px; font-weight: 600; color: #2d3748;">${feature.name}</div>
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 24px;">${feature.icon}</span>
+                                <div style="font-size: 15px; font-weight: 600; color: #2d3748;">${feature.name}</div>
+                            </div>
+                            <span style="font-size: 13px; color: #667eea; font-weight: 600;">权重 ${(feature.weight * 100).toFixed(0)}%</span>
                         </div>
                         <div style="font-size: 13px; color: #718096; line-height: 1.5;">${feature.desc}</div>
                     </div>
@@ -2058,7 +2241,7 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
                             <div style="background: #48bb78; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">3</div>
                             <div style="flex: 1;">
                                 <div style="font-weight: 600; color: #2d3748;">加权融合</div>
-                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">使用预定义权重计算最终得分</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">使用预定义权重计算最终得分 = Σ(特征值 × 权重)</div>
                             </div>
                         </div>
                         <div style="display: flex; align-items: flex-start; gap: 12px;">
@@ -2071,6 +2254,225 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
                     </div>
                 </div>
             `;
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // 根因分析展示
+        function displayRootCauseModule(data) {
+            const container = document.getElementById('root-cause-content');
+            if (!container) return;
+
+            const rootCause = data.root_cause_analysis;
+
+            if (!rootCause) {
+                container.innerHTML = '<p style="color: #718096;">暂无根因分析数据。请尝试使用包含"为什么"、"分析"等关键词的查询（如："为什么GMV下降了？"）。</p>';
+                return;
+            }
+
+            let html = '<div style="display: flex; flex-direction: column; gap: 24px;">';
+
+            // 分析报告卡片
+            html += `
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; padding: 24px;">
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">🔍 根因分析报告</div>
+                    <div style="font-size: 18px; font-weight: 700; line-height: 1.6; white-space: pre-wrap;">${rootCause.report}</div>
+                </div>
+            `;
+
+            // 异常检测
+            if (rootCause.anomalies && rootCause.anomalies.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">⚠️ 检测到的异常</div>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                `;
+
+                rootCause.anomalies.forEach(anomaly => {
+                    const severityColor = {
+                        'high': '#f56565',
+                        'medium': '#ed8936',
+                        'low': '#48bb78'
+                    }[anomaly.severity] || '#718096';
+
+                    const typeIcon = {
+                        'spike': '📈',
+                        'dip': '📉',
+                        'high': '⬆️',
+                        'low': '⬇️'
+                    }[anomaly.type] || '❓';
+
+                    html += `
+                        <div style="background: ${severityColor}10; border-left: 4px solid ${severityColor}; padding: 16px; border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                <div style="font-size: 20px;">${typeIcon}</div>
+                                <div style="font-size: 12px; padding: 4px 12px; background: ${severityColor}; color: white; border-radius: 6px; font-weight: 600;">
+                                    ${anomaly.severity === 'high' ? '高严重度' : anomaly.severity === 'medium' ? '中等' : '低'}
+                                </div>
+                            </div>
+                            <div style="font-size: 14px; font-weight: 600; color: #2d3748; margin-bottom: 4px;">
+                                ${anomaly.timestamp}
+                            </div>
+                            <div style="font-size: 13px; color: #718096;">
+                                实际值: ${anomaly.value.toFixed(2)} | 期望值: ${anomaly.expected.toFixed(2)}
+                            </div>
+                            <div style="font-size: 13px; color: ${severityColor}; font-weight: 600; margin-top: 4px;">
+                                偏离度: ${anomaly.deviation_pct.toFixed(1)}%
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 趋势分析
+            if (rootCause.trends) {
+                const trend = rootCause.trends;
+                const trendIcon = {
+                    'upward': '📈',
+                    'downward': '📉',
+                    'stable': '➡️',
+                    'volatile': '📊'
+                }[trend.trend_type] || '❓';
+
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">📈 趋势分析</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div style="background: #f7fafc; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px;">${trendIcon}</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 8px;">趋势类型</div>
+                                <div style="font-size: 16px; font-weight: 600; color: #2d3748;">${trend.trend_type}</div>
+                            </div>
+                            <div style="background: #f7fafc; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px;">${(trend.trend_strength * 100).toFixed(0)}%</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 8px;">趋势强度</div>
+                            </div>
+                            <div style="background: #f7fafc; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px;">${trend.slope.toFixed(2)}</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 8px;">斜率</div>
+                            </div>
+                            <div style="background: #f7fafc; padding: 16px; border-radius: 10px; text-align: center;">
+                                <div style="font-size: 32px;">${(trend.r_squared * 100).toFixed(1)}%</div>
+                                <div style="font-size: 14px; color: #718096; margin-top: 8px;">拟合度</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 维度分解
+            if (rootCause.dimensions && rootCause.dimensions.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">📊 维度分解分析</div>
+                `;
+
+                rootCause.dimensions.forEach(dim => {
+                    html += `
+                        <div style="margin-bottom: 20px; padding: 16px; background: #f7fafc; border-radius: 10px;">
+                            <div style="font-size: 16px; font-weight: 600; color: #2d3748; margin-bottom: 12px;">${dim.dimension_name}维度</div>
+                            <div style="font-size: 13px; color: #48bb78; margin-bottom: 16px;">${dim.analysis}</div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                    `;
+
+                    dim.top_contributors.forEach(contributor => {
+                        const pct = contributor.contribution_pct;
+                        html += `
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div style="width: 100px; font-size: 13px; color: #2d3748; font-weight: 500;">${contributor.name}</div>
+                                <div style="flex: 1; background: #e2e8f0; height: 20px; border-radius: 10px; position: relative; overflow: hidden;">
+                                    <div style="position: absolute; left: 0; top: 0; height: 100%; width: ${pct}%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);"></div>
+                                </div>
+                                <div style="width: 60px; font-size: 13px; color: #667eea; font-weight: 600; text-align: right;">${pct.toFixed(1)}%</div>
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                    </div>
+                `;
+            }
+
+            // 因果推断
+            if (rootCause.causal_factors && rootCause.causal_factors.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">🔗 潜在原因分析</div>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                `;
+
+                rootCause.causal_factors.forEach(factor => {
+                    const categoryColor = {
+                        'internal': '#4299e1',
+                        'external': '#ed8936',
+                        'structural': '#48bb78'
+                    }[factor.category] || '#718096';
+
+                    const categoryIcon = {
+                        'internal': '🏢',
+                        'external': '🌍',
+                        'structural': '🏗️'
+                    }[factor.category] || '❓';
+
+                    html += `
+                        <div style="border: 2px solid ${categoryColor}; border-radius: 10px; padding: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 24px;">${categoryIcon}</span>
+                                    <div style="font-size: 16px; font-weight: 700; color: #2d3748;">${factor.name}</div>
+                                </div>
+                                                                <div style="font-size: 14px; padding: 4px 12px; background: ${categoryColor}; color: white; border-radius: 6px; font-weight: 600;">
+                                    ${(factor.confidence * 100).toFixed(0)}% 置信度
+                                                                </div>
+                            </div>
+                            <div style="font-size: 13px; color: #718096; line-height: 1.6; margin-bottom: 12px;">
+                                ${factor.explanation}
+                            </div>
+                            <div style="font-size: 12px; color: #718096;">
+                                <strong>证据：</strong>
+                                ${factor.evidence.map(e => `<span style="display: inline-block; background: #f7fafc; padding: 2px 8px; border-radius: 4px; margin: 2px;">${e}</span>`).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+
+            // 行动建议
+            if (rootCause.recommendations && rootCause.recommendations.length > 0) {
+                html += `
+                    <div style="background: white; border: 2px solid #48bb78; border-radius: 12px; padding: 20px;">
+                        <div style="font-size: 18px; font-weight: 700; color: #2d3748; margin-bottom: 16px;">💡 行动建议</div>
+                        <ul style="margin: 0; padding-left: 20px;">
+                `;
+
+                rootCause.recommendations.forEach(rec => {
+                    html += `
+                        <li style="margin-bottom: 8px; font-size: 14px; color: #2d3748; line-height: 1.6;">${rec}</li>
+                    `;
+                });
+
+                html += `
+                        </ul>
+                    </div>
+                `;
+            }
 
             html += '</div>';
             container.innerHTML = html;

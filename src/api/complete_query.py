@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from ..inference.enhanced_hybrid import EnhancedHybridIntentRecognizer
+from ..inference.root_cause.root_cause_analyzer import RootCauseAnalyzer
 from ..mql.generator import MQLGenerator
 from ..mql.sql_generator import SQLGenerator
 from ..mql.engine import MQLExecutionEngine
@@ -19,11 +20,16 @@ from ..inference.context import conversation_manager
 router = APIRouter(tags=["complete-query"])
 
 # 初始化组件
-intent_recognizer = EnhancedHybridIntentRecognizer(llm_provider="zhipu")
+intent_recognizer = EnhancedHybridIntentRecognizer(
+    llm_provider="zhipu",
+    enable_dual_recall=True,   # 启用双路召回
+    enable_rerank=True         # 启用融合精排
+)
 mql_generator = MQLGenerator()
 sql_generator = SQLGenerator()
 mql_engine = MQLExecutionEngine()
 intelligent_interpreter = IntelligentInterpreter(llm_model="glm-4-flash")
+root_cause_analyzer = RootCauseAnalyzer()  # L4根因分析器
 
 
 class QueryRequest(BaseModel):
@@ -44,6 +50,7 @@ class QueryResponse(BaseModel):
     execution_time_ms: float
     all_layers: Optional[List[Dict[str, Any]]] = None
     conversation_id: Optional[str] = Field(None, description="会话ID")
+    root_cause_analysis: Optional[Dict[str, Any]] = Field(None, description="根因分析结果")
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -161,6 +168,23 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
             data = generate_mock_data(intent_result.final_intent.core_query)
             print(f"✅ 降级到模拟数据: {len(data)} 条记录")
 
+        # Step 6: L4根因分析（如果触发）
+        root_cause_analysis = None
+        if data and len(data) >= 3 and _should_trigger_root_cause_analysis(request.query):
+            try:
+                print(f"🔍 [RCA] 触发根因分析...")
+                root_cause_result = root_cause_analyzer.analyze(
+                    query=request.query,
+                    intent=intent_result.final_intent,
+                    data=data,
+                )
+                root_cause_analysis = root_cause_result.to_dict()
+                print(f"✅ [RCA] 根因分析完成: {len(root_cause_result.causal_factors)}个因果因素")
+            except Exception as e:
+                print(f"❌ [RCA] 根因分析失败: {e}")
+                import traceback
+                traceback.print_exc()
+
         execution_time = (time.time() - start_time) * 1000
 
         # 更新会话上下文
@@ -178,7 +202,8 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
             interpretation=interpretation,
             execution_time_ms=execution_time,
             all_layers=all_layers,
-            conversation_id=conversation_id
+            conversation_id=conversation_id,
+            root_cause_analysis=root_cause_analysis
         )
 
     except Exception as e:
@@ -201,3 +226,31 @@ def generate_mock_data(metric_name: str) -> List[Dict[str, Any]]:
         })
 
     return data
+
+
+def _should_trigger_root_cause_analysis(query: str) -> bool:
+    """判断是否应该触发根因分析.
+
+    Args:
+        query: 用户查询文本
+
+    Returns:
+        是否触发根因分析
+    """
+    # 根因分析触发关键词
+    root_cause_keywords = [
+        "为什么",
+        "原因",
+        "怎么回事",
+        "分析",
+        "诊断",
+        "问题",
+        "下降",
+        "增长",
+        "异常",
+        "突然",
+        "波动",
+    ]
+
+    query_lower = query.lower()
+    return any(keyword in query for keyword in root_cause_keywords)

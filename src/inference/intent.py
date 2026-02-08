@@ -128,11 +128,14 @@ class IntentRecognizer:
         # 绝对时间（更具体，放在前面）
         (r'(\d{4})年(\d{1,2})月', TimeGranularity.MONTH, None),
         (r'(\d{4})年', TimeGranularity.YEAR, None),
-        # 相对时间
+        # 相对时间 - 带数字的放在前面
         (r'最近(\d+)[天日]', TimeGranularity.DAY, -1),
         (r'过去(\d+)[天日]', TimeGranularity.DAY, -1),
         (r'前(\d+)[天日]', TimeGranularity.DAY, -1),
         (r'近(\d+)[天日]', TimeGranularity.DAY, -1),
+        # 相对时间 - 不带数字的（需要放在后面，避免匹配"最近7天"）
+        (r'最近[天日]?', TimeGranularity.DAY, -7),  # 默认最近7天
+        (r'过去[天日]?', TimeGranularity.DAY, -7),  # 默认过去7天
         (r'本周|本[周个]周', TimeGranularity.WEEK, 0),
         (r'上个[周个]周', TimeGranularity.WEEK, -1),
         (r'本月', TimeGranularity.MONTH, 0),
@@ -168,6 +171,7 @@ class IntentRecognizer:
 
     # 疑问词模式
     QUESTION_PATTERNS = [
+        r'为什么',  # 根因分析疑问词
         r'是什么[意思意思]?',
         r'是什么',
         r'怎么算',
@@ -176,6 +180,9 @@ class IntentRecognizer:
         r'怎么理解',
         r'解释一下',
         r'说明',
+        r'原因',  # 根因分析
+        r'怎么回事',  # 根因分析
+        r'怎么回事',  # 根因分析
     ]
 
     # 趋势分析模式
@@ -254,6 +261,9 @@ class IntentRecognizer:
         """
         query = query.strip()
 
+        # 0. 检查是否为根因分析查询，提前提取核心查询
+        is_root_cause_query, extracted_core = self._extract_root_cause_query(query)
+
         # 1. 识别时间范围
         time_range, granularity = self._extract_time_range(query)
         core_query = self._remove_time_info(query, time_range)
@@ -261,11 +271,18 @@ class IntentRecognizer:
         # 1.5. 移除疑问词
         core_query = self._remove_question_words(core_query)
 
-        # 2. 识别维度（在识别聚合类型之前，因为维度词可能影响聚合）
-        dimensions = self._extract_dimensions(core_query)
+        # 如果是根因查询，使用提前提取的核心查询
+        if is_root_cause_query and extracted_core:
+            core_query = extracted_core
+        else:
+            # 2. 识别维度（在识别聚合类型之前，因为维度词可能影响聚合）
+            dimensions = self._extract_dimensions(core_query)
 
-        # 2.5. 移除维度词和统计词
-        core_query = self._remove_dimension_and_stat_words(core_query, dimensions)
+            # 2.5. 移除维度词和统计词
+            core_query = self._remove_dimension_and_stat_words(core_query, dimensions)
+
+        # 对于根因查询，仍然需要识别维度（如果用户指定了）
+        dimensions = self._extract_dimensions(query) if is_root_cause_query else self._extract_dimensions(core_query)
 
         # 3. 识别聚合类型
         agg_type = self._extract_aggregation_type(core_query)
@@ -450,6 +467,76 @@ class IntentRecognizer:
         core_query = ' '.join(core_query.split())
 
         return core_query
+
+    def _extract_root_cause_query(self, query: str) -> tuple[bool, Optional[str]]:
+        """提取根因分析的核心查询.
+
+        Args:
+            query: 查询文本
+
+        Returns:
+            (是否为根因查询, 提取的核心查询词)
+        """
+        # 检查是否包含根因分析关键词
+        root_cause_keywords = ['为什么', '原因', '根因', '怎么回事', '诊断', '问题', '怎么了']
+        is_root_cause = any(keyword in query for keyword in root_cause_keywords)
+
+        if not is_root_cause:
+            return False, None
+
+        # 清理查询：逐步移除各种干扰词
+        cleaned_query = query
+
+        # 1. 移除时间范围词
+        time_words = [
+            r'最近\d?[天日]?', r'过去\d?[天日]?', r'前\d?[天日]?', r'近\d?[天日]?',
+            r'[本上个]周', r'[本上个]月', r'[本上]年',
+            r'今年', r'去年', r'本周', r'本月'
+        ]
+        for pattern in time_words:
+            cleaned_query = re.sub(pattern, '', cleaned_query)
+
+        # 2. 移除根因分析关键词
+        for keyword in root_cause_keywords:
+            cleaned_query = cleaned_query.replace(keyword, '')
+
+        # 3. 移除趋势词
+        trend_words = ['下降', '增长', '上升', '下跌', '提高', '降低', '波动', '异常', '变化', '突然']
+        for word in trend_words:
+            cleaned_query = cleaned_query.replace(word, '')
+
+        # 4. 移除动词和分析词
+        action_words = ['分析', '统计', '查看', '展示', '显示', '诊断', '的', '了', '是']
+        for word in action_words:
+            cleaned_query = cleaned_query.replace(word, '')
+
+        # 5. 移除标点和助词
+        cleaned_query = re.sub(r'[？?！!。，,的的之之]', '', cleaned_query)
+        cleaned_query = cleaned_query.strip()
+
+        # 6. 从常见指标列表中匹配
+        common_metrics = [
+            'GMV', 'DAU', 'MAU', '转化率', '客单价', '留存率',
+            '营收', '毛利率', '复购率', '订单量', '增长率', '销量',
+            '活跃用户', '销售额', '交易额', '成交总额'
+        ]
+
+        # 完全匹配
+        for metric in common_metrics:
+            if metric in cleaned_query or metric in query:
+                return True, metric
+
+        # 如果没有完全匹配，尝试部分匹配
+        for metric in common_metrics:
+            # 检查query中是否包含该指标（可能是简称或同义词）
+            if metric in query:
+                return True, metric
+
+        # 如果仍然无法识别，返回清理后的字符串（可能是指标名）
+        if cleaned_query:
+            return True, cleaned_query
+
+        return True, None
 
     def _remove_question_words(self, query: str) -> str:
         """移除疑问词，提取核心查询词.
