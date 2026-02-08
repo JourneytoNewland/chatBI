@@ -152,6 +152,22 @@
             margin-bottom: 10px;
         }
 
+        .header-description {
+            color: #718096;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
         .module-tabs {
             display: flex;
             gap: 10px;
@@ -443,6 +459,78 @@
         .badge-vector { background: #e9d5ff; color: #5b21b6; }
         .badge-graph { background: #fed7e2; color: #9f1239; }
         .badge-llm { background: #fce7f3; color: #9f1239; }
+
+        /* 多轮对话引导 */
+        .conversation-guide {
+            margin-top: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border-radius: 12px;
+            border: 2px dashed #667eea;
+        }
+
+        .conversation-guide-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .conversation-guide-icon {
+            font-size: 20px;
+        }
+
+        .conversation-guide-title {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 15px;
+        }
+
+        .conversation-guide-badge {
+            background: #10b981;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+
+        .conversation-guide-text {
+            color: #4a5568;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+
+        .followup-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .followup-example {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: white;
+            border: 1px solid #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 13px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .followup-example:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .followup-example-icon {
+            font-size: 16px;
+        }
     </style>
 </head>
 <body>
@@ -473,10 +561,10 @@
         <div class="main-content">
             <div class="header">
             <h1>🚀 智能问数系统 - 完整模块透明化</h1>
-            <p style="color: #718096; font-size: 16px; margin-top: 10px;">
+            <p class="header-description">
                 展示向量检索、图谱召回、大语言模型等每个模块的内部运作过程
             </p>
-            <div style="display: inline-block; background: #10b981; color: white; padding: 6px 16px; border-radius: 20px; font-size: 14px; margin-top: 10px;">
+            <div class="header-badge">
                 ✨ 完全透明 - 可验证 - 非空壳
             </div>
         </div>
@@ -511,13 +599,47 @@
 
         <!-- 搜索框 -->
         <div class="search-box">
-            <input type="text" class="search-input" id="queryInput" 
-                   placeholder="请输入自然语言查询，例如：最近7天的GMV" 
+            <input type="text" class="search-input" id="queryInput"
+                   placeholder="请输入自然语言查询，例如：最近7天的GMV"
                    value="最近7天的GMV">
             <button class="search-button" onclick="executeQuery()">
                 🔍 开始智能分析
             </button>
+
+            <!-- 多轮对话引导 -->
+            <div class="conversation-guide" id="conversationGuide">
+                <div class="conversation-guide-header">
+                    <span class="conversation-guide-icon">💬</span>
+                    <span class="conversation-guide-title">多轮对话功能</span>
+                    <span class="conversation-guide-badge">已启用</span>
+                </div>
+                <p class="conversation-guide-text">
+                    系统会记住您的对话上下文，您可以：
+                </p>
+                <div class="followup-examples">
+                    <div class="followup-example" onclick="setQueryAndExecute('按地区看看')">
+                        <span class="followup-example-icon">🌍</span>
+                        <span>按地区看看</span>
+                    </div>
+                    <div class="followup-example" onclick="setQueryAndExecute('只看华东和华南')">
+                        <span class="followup-example-icon">🎯</span>
+                        <span>只看华东和华南</span>
+                    </div>
+                    <div class="followup-example" onclick="setQueryAndExecute('对比去年同期')">
+                        <span class="followup-example-icon">📊</span>
+                        <span>对比去年同期</span>
+                    </div>
+                    <div class="followup-example" onclick="setQueryAndExecute('用图表展示')">
+                        <span class="followup-example-icon">📈</span>
+                        <span>用图表展示</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="examples">
+                <div style="font-size: 12px; color: #718096; margin-bottom: 8px; font-weight: 600;">
+                    📝 示例查询：
+                </div>
                 <div class="example-chip" onclick="setQuery('最近7天的GMV')">最近7天的GMV</div>
                 <div class="example-chip" onclick="setQuery('本月按渠道统计DAU')">本月按渠道统计DAU</div>
                 <div class="example-chip" onclick="setQuery('按地区统计GMV')">按地区统计GMV</div>
@@ -733,6 +855,12 @@
 
         function setQuery(query) {
             document.getElementById('queryInput').value = query;
+        }
+
+        // 设置查询并自动执行
+        function setQueryAndExecute(query) {
+            setQuery(query);
+            executeQuery();
         }
 
         async function executeQuery() {
