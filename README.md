@@ -161,47 +161,177 @@ print(f"置信度: {result.final_intent.confidence}")
 
 ## 🏗️ 项目结构
 
+<details>
+<summary>📁 点击展开完整目录结构</summary>
+
 ```
 chatBI/
-├── docs/                      # 文档
-│   ├── archive/              # 历史文档归档
-│   ├── POSTGRESQL_INTEGRATION.md
-│   └── README.md
+├── 📄 配置文件
+│   ├── README.md                    # 项目主文档
+│   ├── CLAUDE.md                    # 开发指南
+│   ├── .gitignore                   # Git忽略配置
+│   ├── .env.example                 # 环境变量模板
+│   ├── requirements.txt             # Python依赖
+│   ├── docker-compose.yml           # Docker编排
+│   └── .pre-commit-config.yaml      # Pre-commit钩子
 │
-├── scripts/                   # 脚本
-│   ├── setup/                # 安装配置脚本
-│   ├── monitoring/           # 监控脚本
-│   └── testing/              # 测试脚本
+├── 🐍 源代码 (src/)
+│   ├── api/                         # API层（FastAPI）
+│   │   ├── main.py                  # FastAPI主应用
+│   │   ├── complete_query.py        # 完整查询API（L1-L4集成）
+│   │   ├── models.py                # Pydantic数据模型
+│   │   └── v2_query_api.py          # API v2版本
+│   │
+│   ├── inference/                   # 推理引擎
+│   │   ├── intent.py                # 意图定义与识别器
+│   │   ├── enhanced_hybrid.py       # 三层混合意图识别
+│   │   ├── llm_intent.py            # LLM意图识别
+│   │   ├── zhipu_intent.py          # 智谱AI意图识别
+│   │   └── root_cause/              # 根因分析模块（L4层）
+│   │       ├── analyzer.py          # 分析器实现
+│   │       └── root_cause_analyzer.py # 主入口
+│   │
+│   ├── recall/                      # 召回层
+│   │   ├── vector/                  # 向量召回
+│   │   │   ├── qdrant_store.py      # Qdrant存储
+│   │   │   └── vectorizer.py        # BGE-M3向量化
+│   │   └── graph/                   # 图谱召回
+│   │       ├── neo4j_client.py      # Neo4j客户端
+│   │       └── graph_store.py       # 图谱存储
+│   │
+│   ├── rerank/                      # 精排层
+│   │   ├── ranker.py                # 排序器
+│   │   └── fusion_ranker.py         # 融合排序
+│   │
+│   ├── mql/                         # MQL引擎
+│   │   ├── engine_v2.py             # MQL执行引擎V2
+│   │   ├── sql_generator_v2.py      # SQL生成器V2
+│   │   ├── intelligent_interpreter.py # 智能解读
+│   │   └── models.py                # MQL数据模型
+│   │
+│   ├── database/                    # 数据库
+│   │   ├── postgres_client.py       # PostgreSQL客户端
+│   │   ├── migrations/              # 数据库迁移
+│   │   └── init_test_data.py         # 测试数据
+│   │
+│   ├── embedding/                   # 嵌入模型
+│   │   └── bge_embedding.py          # BGE嵌入
+│   │
+│   ├── validator/                   # 验证器
+│   │   └── query_validator.py       # 查询验证
+│   │
+│   └── config.py                    # 配置管理
 │
-├── src/                       # 源代码
-│   ├── api/                  # API层
-│   │   ├── main.py           # FastAPI主应用
-│   │   └── complete_query.py # 完整查询API
-│   ├── inference/            # 意图识别
-│   │   ├── enhanced_hybrid.py # 三层混合架构
-│   │   └── intent.py         # 意图定义
-│   ├── mql/                  # MQL引擎
-│   │   ├── engine_v2.py      # MQL执行引擎V2
-│   │   ├── sql_generator_v2.py # SQL生成器V2
-│   │   └── intelligent_interpreter.py # 智能解读
-│   ├── database/             # 数据库
-│   │   ├── postgres_client.py # PostgreSQL客户端
-│   │   ├── migrations/       # 数据库迁移
-│   │   └── init_test_data.py # 测试数据生成
-│   ├── monitoring/           # 监控
-│   │   └── metrics.py        # Prometheus指标
-│   └── config.py             # 配置管理
+├── 🧪 测试 (tests/)
+│   ├── test_inference/              # 推理测试
+│   │   ├── test_root_cause.py       # 根因分析测试
+│   │   └── test_intent_integration.py # 意图集成测试
+│   ├── test_integration/            # 集成测试
+│   │   └── test_full_query_flow.py  # 完整流程测试
+│   ├── test_api/                    # API测试
+│   ├── test_mql/                    # MQL测试
+│   ├── test_recall/                 # 召回测试
+│   ├── test_rerank/                 # 精排测试
+│   ├── test_services/               # 服务测试
+│   ├── test_validator/              # 验证测试
+│   └── performance/                 # 性能测试
+│       ├── load_test.py            # Locust压力测试
+│       └── benchmark.py            # 基准测试
 │
-├── frontend/                  # 前端
-│   ├── index.html            # 主界面
-│   └── intent-visualization-v2.html # 可视化界面
+├── 📱 前端 (frontend/)
+│   ├── index.html                   # 主界面
+│   ├── intent-visualization-v2.html # 意图可视化
+│   ├── pipeline-*.html              # 流程可视化
+│   ├── graph-management*.html       # 图谱管理
+│   ├── dashboard.html               # 仪表板
+│   ├── diagnose.html                # 诊断页面
+│   └── test_root_cause_frontend.html # 根因分析演示
 │
-├── monitoring/                # 监控配置
-│   ├── prometheus/           # Prometheus配置
-│   └── grafana/              # Grafana看板
+├── 📚 文档 (docs/)
+│   ├── README.md                    # 文档索引
+│   ├── ROOT_CAUSE_USAGE.md          # 根因分析使用指南
+│   ├── SECURITY_CHECK_SUMMARY.md    # 安全检查报告
+│   ├── root_cause_analysis_summary.md # 根因分析总结
+│   ├── POSTGRESQL_INTEGRATION.md    # PostgreSQL集成
+│   ├── INTENT_RECOGNITION_ARCHITECTURE.md # 意图识别架构
+│   ├── MQL_SYSTEM_SUMMARY.md        # MQL系统文档
+│   ├── SECURITY_BEST_PRACTICES.md   # 安全最佳实践
+│   ├── ARCHITECTURE.md              # 系统架构
+│   ├── PROJECT_STRUCTURE_ANALYSIS.md # 项目结构分析
+│   └── archive/                     # 历史文档归档
+│       ├── 【方案三】...
+│       └── ...
 │
-├── tests/                     # 测试
-│   └── performance/          # 性能测试
+├── 🔧 脚本 (scripts/)
+│   ├── run_demo_server.py           # 演示服务器
+│   ├── run_dev_server.py            # 开发服务器
+│   ├── run-production-server.py     # 生产服务器
+│   ├── init_seed_data.py            # 初始化种子数据
+│   ├── init_graph.py                # 初始化图谱
+│   ├── quick_init_qdrant.py         # 快速初始化Qdrant
+│   ├── benchmark.py                 # 性能基准
+│   ├── acceptance_test.py           # 验收测试
+│   └── testing/                     # 测试脚本
+│
+├── 📊 监控 (monitoring/)
+│   ├── prometheus/                  # Prometheus配置
+│   └── grafana/                     # Grafana看板
+│
+└── 🐳 基础设施
+    ├── docker-compose.yml            # Docker编排
+    └── .dockerignore                 # Docker忽略
+```
+
+</details>
+
+<details>
+<summary>📖 模块说明</summary>
+
+### 核心模块
+
+| 模块 | 职责 | 关键文件 |
+|------|------|---------|
+| **API层** | FastAPI接口、请求处理 | `main.py`, `complete_query.py` |
+| **推理引擎** | 意图识别、根因分析 | `intent.py`, `enhanced_hybrid.py`, `root_cause/` |
+| **召回层** | 向量召回、图谱召回 | `vector/`, `graph/` |
+| **精排层** | 结果排序、融合排序 | `ranker.py`, `fusion_ranker.py` |
+| **MQL引擎** | MQL执行、SQL生成 | `engine_v2.py`, `sql_generator_v2.py` |
+| **数据库** | PostgreSQL操作、数据迁移 | `postgres_client.py`, `migrations/` |
+
+### 目录组织原则
+
+1. **模块化**: 每个功能独立模块，职责单一
+2. **分层架构**: API → 推理 → 召回 → 精排 → 数据
+3. **测试覆盖**: 单元测试 + 集成测试 + 性能测试
+4. **文档完善**: 功能文档 + 架构文档 + 历史归档
+
+</details>
+
+<details>
+<summary>🎯 开发规范</summary>
+
+### 文件命名
+
+- Python模块: `snake_case.py`
+- 测试文件: `test_*.py`
+- 文档文件: `FEATURE_NAME.md`
+- 配置文件: `*.yaml`, `*.yml`, `*.json`
+
+### Git规范
+
+- ✅ .gitignore 包含所有临时文件
+- ✅ 敏感信息在 `.env` 中（不提交）
+- ✅ 文档归档在 `docs/archive/`
+- ✅ Conventional Commits 格式
+
+### 代码质量
+
+- 类型注解: 所有函数必须有类型注解
+- 文档字符串: Google风格
+- 测试覆盖: 目标 80%+
+- 代码审查: 提交前自我审查
+
+</details>
 │       ├── load_test.py      # Locust压力测试
 │       └── benchmark.py      # 基准测试
 │
