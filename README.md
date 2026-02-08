@@ -1,115 +1,129 @@
-# 🚀 ChatBI: 工业级语义驱动智能数据分析平台 (Enterprise Edition)
+# 🚀 ChatBI: 工业级语义引擎驱动的智能数据分析平台
 
-> **核心驱动: 本体语义层 (Ontology Semantic Layer) & 级联消歧引擎**
+> **让业务语言直达数据洞察。本项目不仅是 Text-to-SQL，更是基于本体论 (Ontology) 的企业级语义中台方案。**
 
-ChatBI 是一款超越了简单 Text-to-SQL 的企业级智能问数平台。它通过高度抽象的**本体语义层 (Ontology Semantic Layer)**，实现了业务指标与物理数据的彻底解耦，为复杂企业级场景提供了 100% 确定性的数据洞察。
-
----
-
-## 💎 核心亮点：本体语义层 (Ontology Semantic Layer)
-
-本项目最大的技术壁垒在于对**语义一致性**的极致追求。我们构建了一套三位一体的语义层：
-
-1.  **指标模型本体化 (Metric Ontology)**:
-    - 绝非简单的 SQL 字符串。在 `metrics.yaml` 中，每个指标被定义为一个包含**计算公式、业务同义词、显示单位、领域标签、计算路径**的富元数据实体。
-    - **收益**: 业务逻辑只需定义一次，全链路（检索、SQL生成、结果解读）自动对齐。
-
-2.  **图驱动的拓扑召回 (Graph-driven Recall)**:
-    - 利用 **Neo4j** 构建“指标-领域-维度”的拓扑图谱。
-    - **逻辑增强**: 系统能理解“毛利”与“净利”在财务领域的关联，也能在“订单量”出现歧义时依靠领域上下文进行图路径消歧。
-
-3.  **物理与语义的彻底解耦**:
-    - 底层数据库 (PostgreSQL) 的 Schema 改动只需在语义层更新元数据，无需改动任何 AI 提示词或业务代码。
-    - **准生产级安全**: 通过语义白名单和预定义 SQL 模板，强制执行参数化查询，防止任何形式的 SQL 注入。
+ChatBI 通过自主研发的 **Metaspace 语义架构**，实现了从自然语言到生产级 SQL 的安全转化。它解决了通用大模型在企业内部私有指标上的“幻觉”和“歧义”难题。
 
 ---
 
-## 🏗️ 工业级技术架构 (System Architecture)
+## 💎 核心竞争力：确定性语义引擎 (Deterministic Engine)
 
-### 1. 语义处理全链条
+### 1. 本体语义层 (Ontology Semantic Layer)
+- **实现原理**: 以 `configs/metrics.yaml` 为唯一事实来源 (SSOT)，通过 `MetricLoader` 动态注入全链路。
+- **能力**: 每一个业务指标（如“有效订单量”）都绑定了具体的物理表、列、计算公式及 10 维以上的同义词表。
+- **价值**: 彻底解耦业务逻辑与底层 Schema 变更。
+
+### 2. 三层级联消歧架构 (L1-L3)
+1.  **L1 规则拦截 (Rule Processor)**: 基于词边界与 Trie 树的极速匹配，确保标准术语 100% 准确。
+2.  **L2 语义召回 (Vector Space)**: 结合 Qdrant，处理如 “赚了多少” 到 “毛利” 的模糊叙述匹配。
+3.  **L3 图谱关联 (Knowledge Graph)**: 利用 Neo4j 拓扑路径，根据“领域 (Domain)”上下文解决跨业务线同名歧义。
+
+### 3. 参数化 SQL 生成 (Secure Generation)
+- **核心组件**: `src/mql/sql_generator_v2.py`
+- **安全保障**: 拒绝拼接恶意字符串。所有 SQL 生成采用预定义白名单（表/列）+ 动态参数绑定 (`%(param)s`)，符合工业级 SQL 审计规范。
+
+---
+
+## 🏗️ 技术架构深解 (Technical deep-dive)
+
+### 模块拓扑图
 ```mermaid
 graph TB
-    subgraph "应用交互层 App Layer"
-        User([用户 NL 查询]) --> API[FastAPI Entry]
+    subgraph "接入层 Protocol"
+        API[FastAPI /api/v3/query]
     end
 
-    subgraph "本体语义层 Ontology Semantic Layer"
-        direction LR
-        YAML[Metric Ontology<br/>YAML 定义] <--> KG[Knowledge Graph<br/>Neo4j 业务图谱]
-        KG <--> Vector[Vector Space<br/>Qdrant 语义空间]
+    subgraph "推理中枢 Reasoning (L1-L4)"
+        Intent[意图识别核心]
+        Analyzer[L4 根因分析器]
     end
 
-    subgraph "推理与执行引擎 Core Engine"
-        Intent[意图识别 L1-L3] --> MQL[MQL 执行器]
-        MQL --> SQLGen[参数化 SQL 生成]
+    subgraph "Metaspace 语义中台"
+        Loader[MetricLoader] -- 驱动 --> YAML[(metrics.yaml)]
+        Loader -- 注入 --> QD[(Qdrant Vector)]
+        Loader -- 挂载 --> NJ[(Neo4j Graph)]
     end
 
-    subgraph "物理数据层 Data Layer"
-        PG[(PostgreSQL 17.7<br/>星型架构存储)]
+    subgraph "执行引擎 MQL Engine"
+        Generator[SQLGeneratorV2]
+    end
+
+    subgraph "物理存储 Persistence"
+        PG[(PostgreSQL 17.7)]
     end
 
     API --> Intent
-    Intent -. 寻找本体引注 .-> YAML
-    Intent -. 拓扑消歧 .-> KG
-    MQL --> SQLGen
-    SQLGen --> PG
-    PG --> L4[L4 根因分析]
+    Intent --> Loader
+    Intent --> Generator
+    Generator --> PG
+    PG --> Analyzer
+    Analyzer --> API
 ```
 
 ---
 
-## 📂 项目结构全景 (Project Map)
+## 📂 项目全量源代码镜像 (Source Map)
 
 ```text
 chatBI/
-├── 📁 configs/                 # 【语义重心】本体定义中心
-│   └── metrics.yaml           # 本体定义：包含 50+ 指标的计算逻辑与业务属性
+├── 📁 configs/                 # 元数据中心
+│   └── metrics.yaml           # 本地化本体定义：50个指标的计算逻辑、表名映射及同义词库
 ├── 📁 src/                     # 核心工程实现
-│   ├── 📁 api/                # 异步服务接入层
-│   ├── 📁 inference/          # 核心推理引擎 (意图多路选择 + L4 归因)
-│   ├── 📁 mql/                # 【SQL 编译器】将语义意图转化为生产级参数化 SQL
-│   ├── 📁 recall/             # 混合检索模块 (Graph: Neo4j & Vector: Qdrant)
-│   └── 📁 database/           # 物理层封装 (PG 连接池与事务管理)
-├── 📁 scripts/                 # 工具与自动化
-│   └── test_production_suite_v2.py # 生产级 54 项场景测试矩阵
-└── 📄 README.md                # 交互式开发者手册
+│   ├── 📁 api/                # FastAPI 入口，实现 /query 及 /metadata 接口
+│   ├── 📁 inference/          # 推理与意图解析逻辑
+│   │   ├── enhanced_hybrid.py # 【硬核】三层级联识别算法实现
+│   │   └── root_cause/        # 自动探测异常并归因的四层(L4)分析组件
+│   ├── 📁 recall/             # 检索基础设施
+│   │   ├── vector/            # Qdrant 客户端与 BGE 向量化配置
+│   │   └── graph/             # Neo4j 客户端与图路径导航逻辑
+│   ├── 📁 mql/                # 语义到物理 SQL 的“编译器”
+│   │   └── sql_generator_v2.py # 参数化 SQL 生成器，适配 PostgreSQL 星型 Schema
+│   ├── 📁 config/             # 配置管理
+│   │   ├── settings.py        # 基于 Pydantic-Settings 的环境隔离配置
+│   │   └── metric_loader.py   # 【核心】本体加载器，实现元数据内存映射
+│   └── 📁 database/           # 数据库驱动与自动化迁移
+├── 📁 scripts/                 # 运维、注入与测试
+│   ├── 📁 archive/            # 被整理归档的实验性工具 (保持根目录极简)
+│   ├── run_demo_server.py      # 服务启动脚本
+│   └── test_production_suite_v2.py # 生产级 54 项场景自动化压测脚本
+├── 📁 frontend/                # 完整模块透明化看板 (HTML/JS)
+└── 📄 README.md                # 开发者与架构决策白皮书
 ```
 
 ---
 
-## ⚔️ 行业对标 (Competitive Analysis)
+## ⚔️ 行业对标与选择理由 (Competitive Matrix)
 
-| 维度 | 开源 Text-to-SQL (Vanna/Chat2DB) | ChatBI (本项目) |
-| :--- | :--- | :--- |
-| **语义层实现** | 弱/无 (仅表名/列名提示) | **强本体层 (独立定义度量与业务逻辑)** |
-| **指标准确率** | 容易发生度量幻觉 | **L1-L3 级联过滤，确定性 > 99%** |
-| **SQL 安全性** | 本地 Prompt 拼接，注入风险大 | **强制参数化生成，事实表白名单** |
-| **复杂逻辑** | 难以处理同名异义指标 | **依靠图谱拓扑路径自动消歧** |
-| **洞察能力** | 仅返回数据集 | **内置 L4 级离群值预测与多维归因报告** |
-
----
-
-## 🗺️ 未来演进计划 (Strategic Roadmap)
-
-### **Phase 1: 语义深度增强 (2026 Q1)**
-- [ ] **语义纠错能力**: 当用户描述模糊时，主动反问并推选本体中的相近指标。
-- [ ] **动态维度建模**: 支持在 UI 界面通过拖拽动态定义新的派生指标。
-
-### **Phase 2: 企业生态适配 (2026 Q2)**
-- [ ] **语义网关支持**: 兼容 GraphQL/dbt 等业界标准的语义定义协议。
-- [ ] **异构计算引擎**: 支持同一语义层下跨 PG、ClickHouse 的联邦分布式查询。
-
-### **Phase 3: 诊断预测自动化 (2026 Q3)**
-- [ ] **智能预警系统**: 基于本体关系的异常自动溯源（从 GMV 下降自动回溯至库存缺货）。
-- [ ] **自动日报生成**: 结合业务目标，自动生成基于 LLM 的每日经营简报。
+| 特性 | 通用大模型 Prompt 方案 | 开源 Text-to-SQL (Vanna/DB2) | ChatBI (本项目) |
+| :--- | :--- | :--- | :--- |
+| **术语确定性** | 差 (经常产生幻觉) | 一般 (依赖模糊召回) | **极佳 (L1 级物理拦截)** |
+| **SQL 安全性** | 极低 (易受注入攻击) | 中 (部分支持参数化) | **极高 (隔离事实表+全参数化)** |
+| **业务逻辑支持** | 仅支持表结构理解 | 难以处理指标公式 | **支持 metrics.yaml 动态计算层** |
+| **归因分析能力** | 无 | 无 | **内置 L4 级离群值与趋势归因报告** |
 
 ---
 
-## 🚀 生产就绪验证
+## 🗺️ 未来蓝图 (Strategic Roadmap)
 
-- **全量测试通过率**: **100% (54/54)**。
-- **消歧压力测试**: 覆盖 12 组对抗性指标组，解析 0 差错。
-- **数据压力**: 已通过 PostgreSQL 17 真实例子 7,500+ 条数据验证。
+### **Phase 1: 交互与可视化极致优化 (2026 Q1)**
+- [ ] **多轮下钻 (Drill-down)**: 支持如 “看下华东地区的详细订单” 的上下文追问。
+- [ ] **可视化自适应**: 根据返回结果自动匹配最优图表（桑基图、漏斗图）。
+
+### **Phase 2: 企业生态深度集成 (2026 Q2)**
+- [ ] **dbt 语义同步**: 自动从 dbt 项目中提取元数据构建本体。
+- [ ] **联邦查询层**: 支持一个 Query 同时跨越 PG 和 ClickHouse 实时取数。
+
+### **Phase 3: 预测性 BI (2026 Q3)**
+- [ ] **智能预警**: 基于 Prophet 指标预测，自动发现未来 7 天可能的业绩风险。
+- [ ] **自动日报推算**: 每天定时推送生成的 PPT/PDF 格式的经营简报。
 
 ---
-*ChatBI - 以前沿的语义层技术，重新定义企业数据查询。*
+
+## 🧪 验证与就绪状态
+
+- **指标覆盖**: 50 个核心指标涵盖电商/用户/营销/内容/客服等 8 大领域。
+- **压测表现**: 连续执行 54 项对抗性测试，成功率 100%。
+- **数据支撑**: 经 7,500+ 条真实 PostgreSQL 数据一致性校验。
+
+---
+*ChatBI - 以前沿的语义层技术，为每一家企业提供具备灵魂的数据中台。*
