@@ -718,13 +718,25 @@
 
         <!-- 模块切换标签 -->
         <div class="module-tabs">
-            <div class="module-tab active" onclick="switchModule('vector', event)">
+            <div class="module-tab active" onclick="switchModule('intent-flow', event)">
+                <div class="module-tab-icon">🎯</div>
+                <div class="module-tab-name">意图识别流程</div>
+            </div>
+            <div class="module-tab" onclick="switchModule('vector', event)">
                 <div class="module-tab-icon">🧠</div>
                 <div class="module-tab-name">向量检索模块</div>
             </div>
             <div class="module-tab" onclick="switchModule('graph', event)">
                 <div class="module-tab-icon">🕸️</div>
                 <div class="module-tab-name">图谱召回模块</div>
+            </div>
+            <div class="module-tab" onclick="switchModule('fusion', event)">
+                <div class="module-tab-icon">🔀</div>
+                <div class="module-tab-name">双路召回融合</div>
+            </div>
+            <div class="module-tab" onclick="switchModule('ranking', event)">
+                <div class="module-tab-icon">⚖️</div>
+                <div class="module-tab-name">融合精排详情</div>
             </div>
             <div class="module-tab" onclick="switchModule('llm', event)">
                 <div class="module-tab-icon">🤖</div>
@@ -741,18 +753,6 @@
             <div class="module-tab" onclick="switchModule('result', event)">
                 <div class="module-tab-icon">📊</div>
                 <div class="module-tab-name">结果展示</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('intent-flow', event)">
-                <div class="module-tab-icon">🎯</div>
-                <div class="module-tab-name">意图识别流程</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('fusion', event)">
-                <div class="module-tab-icon">🔀</div>
-                <div class="module-tab-name">双路召回融合</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('ranking', event)">
-                <div class="module-tab-icon">⚖️</div>
-                <div class="module-tab-name">融合精排详情</div>
             </div>
         </div>
 
@@ -808,8 +808,16 @@
             </div>
         </div>
 
+        <!-- 意图识别流程 -->
+        <div id="intent-flow-module" class="module-content active">
+            <h2 style="color: #667eea; margin-bottom: 20px;">🎯 三层意图识别流程</h2>
+            <div id="intent-flow-content">
+                <p style="color: #718096;">请先执行查询以查看意图识别详细流程...</p>
+            </div>
+        </div>
+
         <!-- 向量检索模块 -->
-        <div id="vector-module" class="module-content active">
+        <div id="vector-module" class="module-content">
             <h2 style="color: #667eea; margin-bottom: 20px;">🧠 向量检索模块详细过程</h2>
             <div id="vector-content">
                 <p style="color: #718096;">请先执行查询以查看向量检索的详细过程...</p>
@@ -821,6 +829,22 @@
             <h2 style="color: #667eea; margin-bottom: 20px;">🕸️ 图谱召回模块详细过程</h2>
             <div id="graph-content">
                 <p style="color: #718096;">请先执行查询以查看图谱召回的详细过程...</p>
+            </div>
+        </div>
+
+        <!-- 双路召回融合 -->
+        <div id="fusion-module" class="module-content">
+            <h2 style="color: #667eea; margin-bottom: 20px;">🔀 双路召回融合</h2>
+            <div id="fusion-content">
+                <p style="color: #718096;">请先执行查询以查看召回融合详细流程...</p>
+            </div>
+        </div>
+
+        <!-- 融合精排详情 -->
+        <div id="ranking-module" class="module-content">
+            <h2 style="color: #667eea; margin-bottom: 20px;">⚖️ 融合精排详情</h2>
+            <div id="ranking-content">
+                <p style="color: #718096;">请先执行查询以查看精排详细流程...</p>
             </div>
         </div>
 
@@ -853,30 +877,6 @@
             <h2 style="color: #667eea; margin-bottom: 20px;">📊 查询结果与可视化</h2>
             <div id="result-content">
                 <p style="color: #718096;">请先执行查询以查看结果...</p>
-            </div>
-        </div>
-
-        <!-- 意图识别流程 -->
-        <div id="intent-flow-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🎯 三层意图识别流程</h2>
-            <div id="intent-flow-content">
-                <p style="color: #718096;">请先执行查询以查看意图识别详细流程...</p>
-            </div>
-        </div>
-
-        <!-- 双路召回融合 -->
-        <div id="fusion-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🔀 双路召回融合</h2>
-            <div id="fusion-content">
-                <p style="color: #718096;">请先执行查询以查看召回融合详细流程...</p>
-            </div>
-        </div>
-
-        <!-- 融合精排详情 -->
-        <div id="ranking-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">⚖️ 融合精排详情</h2>
-            <div id="ranking-content">
-                <p style="color: #718096;">请先执行查询以查看精排详细流程...</p>
             </div>
         </div>
         </div> <!-- 关闭 main-content -->
