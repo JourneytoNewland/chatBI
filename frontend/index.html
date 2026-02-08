@@ -742,6 +742,18 @@
                 <div class="module-tab-icon">📊</div>
                 <div class="module-tab-name">结果展示</div>
             </div>
+            <div class="module-tab" onclick="switchModule('intent-flow', event)">
+                <div class="module-tab-icon">🎯</div>
+                <div class="module-tab-name">意图识别流程</div>
+            </div>
+            <div class="module-tab" onclick="switchModule('fusion', event)">
+                <div class="module-tab-icon">🔀</div>
+                <div class="module-tab-name">双路召回融合</div>
+            </div>
+            <div class="module-tab" onclick="switchModule('ranking', event)">
+                <div class="module-tab-icon">⚖️</div>
+                <div class="module-tab-name">融合精排详情</div>
+            </div>
         </div>
 
         <!-- 搜索框 -->
@@ -841,6 +853,30 @@
             <h2 style="color: #667eea; margin-bottom: 20px;">📊 查询结果与可视化</h2>
             <div id="result-content">
                 <p style="color: #718096;">请先执行查询以查看结果...</p>
+            </div>
+        </div>
+
+        <!-- 意图识别流程 -->
+        <div id="intent-flow-module" class="module-content">
+            <h2 style="color: #667eea; margin-bottom: 20px;">🎯 三层意图识别流程</h2>
+            <div id="intent-flow-content">
+                <p style="color: #718096;">请先执行查询以查看意图识别详细流程...</p>
+            </div>
+        </div>
+
+        <!-- 双路召回融合 -->
+        <div id="fusion-module" class="module-content">
+            <h2 style="color: #667eea; margin-bottom: 20px;">🔀 双路召回融合</h2>
+            <div id="fusion-content">
+                <p style="color: #718096;">请先执行查询以查看召回融合详细流程...</p>
+            </div>
+        </div>
+
+        <!-- 融合精排详情 -->
+        <div id="ranking-module" class="module-content">
+            <h2 style="color: #667eea; margin-bottom: 20px;">⚖️ 融合精排详情</h2>
+            <div id="ranking-content">
+                <p style="color: #718096;">请先执行查询以查看精排详细流程...</p>
             </div>
         </div>
         </div> <!-- 关闭 main-content -->
@@ -963,7 +999,7 @@
             currentConversationId = null;
             document.getElementById('queryInput').value = '';
             // 清空所有模块内容
-            const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content'];
+            const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content', 'intent-flow-content', 'fusion-content', 'ranking-content'];
             contentIds.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -990,6 +1026,9 @@
                 displayMQLModule(conv.data);
                 displayDataModule(conv.data);
                 displayResultModule(conv.data);
+                displayIntentFlowModule(conv.data);
+                displayFusionModule(conv.data);
+                displayRankingModule(conv.data);
             }
 
             renderConversationList();
@@ -1075,6 +1114,9 @@
                 else if (moduleName === 'mql') displayMQLModule(queryData);
                 else if (moduleName === 'data') displayDataModule(queryData);
                 else if (moduleName === 'result') displayResultModule(queryData);
+                else if (moduleName === 'intent-flow') displayIntentFlowModule(queryData);
+                else if (moduleName === 'fusion') displayFusionModule(queryData);
+                else if (moduleName === 'ranking') displayRankingModule(queryData);
             }
         }
 
@@ -1096,7 +1138,7 @@
             }
 
             // 显示加载状态
-            const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content'];
+            const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content', 'intent-flow-content', 'fusion-content', 'ranking-content'];
             contentIds.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -1792,6 +1834,243 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
             } catch {
                 return dateStr.substring(0, 10);
             }
+        }
+
+        // 意图识别流程展示
+        function displayIntentFlowModule(data) {
+            const container = document.getElementById('intent-flow-content');
+            if (!container) return;
+
+            if (!data.all_layers || data.all_layers.length === 0) {
+                container.innerHTML = '<p style="color: #718096;">暂无意图识别流程数据</p>';
+                return;
+            }
+
+            const allLayers = data.all_layers;
+            const sourceLayer = data.intent?.source_layer || '';
+
+            let html = '<div style="display: flex; flex-direction: column; gap: 20px;">';
+
+            // 展示所有三层
+            allLayers.forEach((layer, index) => {
+                const isSelected = layer.layer_name.includes(sourceLayer) || layer.layer_name === sourceLayer;
+                const layerColor = isSelected ? '#667eea' : '#a0aec0';
+                const bgColor = isSelected ? 'rgba(102, 126, 234, 0.1)' : '#f7fafc';
+
+                html += `
+                    <div style="border: 2px solid ${layerColor}; border-radius: 12px; padding: 20px; background: ${bgColor};">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <div>
+                                <h3 style="color: ${layerColor}; margin: 0; font-size: 18px;">${layer.layer_name}</h3>
+                                <div style="margin-top: 8px;">
+                                    ${isSelected ? '<span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 6px; font-size: 12px;">✓ 最终采用</span>' : '<span style="background: #e2e8f0; color: #718096; padding: 4px 12px; border-radius: 6px; font-size: 12px;">未采用</span>'}
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 24px; font-weight: 700; color: ${layerColor};">${(layer.confidence * 100).toFixed(1)}%</div>
+                                <div style="font-size: 12px; color: #718096;">置信度</div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                            <div style="background: white; padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 12px; color: #718096; margin-bottom: 5px;">耗时</div>
+                                <div style="font-size: 18px; font-weight: 600; color: #2d3748;">${layer.duration.toFixed(2)}ms</div>
+                            </div>
+                            <div style="background: white; padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 12px; color: #718096; margin-bottom: 5px;">状态</div>
+                                <div style="font-size: 18px; font-weight: 600; color: ${layer.success ? '#48bb78' : '#f56565'};">${layer.success ? '✓ 成功' : '✗ 失败'}</div>
+                            </div>
+                        </div>
+
+                        ${layer.metadata ? `
+                            <div style="margin-top: 15px; padding: 15px; background: white; border-radius: 8px;">
+                                <div style="font-size: 13px; font-weight: 600; color: #2d3748; margin-bottom: 10px;">📋 详细元数据</div>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; font-size: 13px;">
+                                    ${Object.entries(layer.metadata).map(([key, value]) => `
+                                        <div>
+                                            <div style="color: #718096;">${key}</div>
+                                            <div style="color: #2d3748; font-weight: 500; word-break: break-all;">${typeof value === 'object' ? JSON.stringify(value) : String(value)}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // 双路召回融合展示
+        function displayFusionModule(data) {
+            const container = document.getElementById('fusion-content');
+            if (!container) return;
+
+            // 从 all_layers 中提取 L2 的召回信息
+            const l2Layer = data.all_layers?.find(l => l.layer_name.includes('L2'));
+
+            if (!l2Layer || !l2Layer.metadata) {
+                container.innerHTML = '<p style="color: #718096;">暂无召回融合详细数据（当前查询可能使用了 L1 规则层或 L3 LLM 层）</p>';
+                return;
+            }
+
+            const metadata = l2Layer.metadata;
+            const method = metadata.method || '未知';
+            const candidatesFound = metadata.candidates_found || 0;
+            const topScore = metadata.top_score || 0;
+
+            let html = '<div style="display: flex; flex-direction: column; gap: 20px;">';
+
+            // 召回方法卡片
+            html += `
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 12px; padding: 24px;">
+                    <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">召回方法</div>
+                    <div style="font-size: 28px; font-weight: 700;">${method}</div>
+                    <div style="margin-top: 12px; font-size: 14px; opacity: 0.85;">
+                        使用语义向量检索进行候选指标召回
+                    </div>
+                </div>
+            `;
+
+            // 召回统计
+            html += `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <div style="background: #f7fafc; padding: 20px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 36px; font-weight: 700; color: #667eea;">${candidatesFound}</div>
+                        <div style="font-size: 14px; color: #718096; margin-top: 5px;">候选指标数</div>
+                    </div>
+                    <div style="background: #f7fafc; padding: 20px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 36px; font-weight: 700; color: #48bb78;">${(topScore * 100).toFixed(1)}%</div>
+                        <div style="font-size: 14px; color: #718096; margin-top: 5px;">最高相似度</div>
+                    </div>
+                </div>
+            `;
+
+            // 召回流程说明
+            html += `
+                <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px;">📊 召回流程</div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">1</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">查询向量化</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">使用 m3e-base 模型将自然语言查询转换为向量表示</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">2</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">向量相似度检索</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">在 Qdrant 向量数据库中检索最相似的指标定义</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">3</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">Top-K 候选返回</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">返回相似度最高的 Top-10 候选指标</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // 融合精排详情展示
+        function displayRankingModule(data) {
+            const container = document.getElementById('ranking-content');
+            if (!container) return;
+
+            // 从 all_layers 中提取 L2 的召回信息用于展示特征
+            const l2Layer = data.all_layers?.find(l => l.layer_name.includes('L2'));
+
+            if (!l2Layer || !l2Layer.metadata) {
+                container.innerHTML = '<p style="color: #718096;">暂无精排详细数据（当前查询可能使用了 L1 规则层或 L3 LLM 层）</p>';
+                return;
+            }
+
+            let html = '<div style="display: flex; flex-direction: column; gap: 20px;">';
+
+            // 11维特征说明
+            const features = [
+                { name: '向量相似度', icon: '🧠', desc: '查询与指标的语义相似度' },
+                { name: '图谱分数', icon: '🕸️', desc: '基于知识图谱的关系强度' },
+                { name: '指标重要性', icon: '⭐', desc: '指标在业务中的重要程度' },
+                { name: '查询词覆盖率', icon: '📝', desc: '查询词在指标中的覆盖比例' },
+                { name: '精确匹配', icon: '🎯', desc: '查询是否与指标精确匹配' },
+                { name: '前缀匹配', icon: '📌', desc: '查询是否与指标前缀匹配' },
+                { name: '领域匹配', icon: '🏷️', desc: '查询与指标领域的匹配度' },
+                { name: '召回来源', icon: '📍', desc: '指标的召回渠道标识' },
+                { name: '组合分数', icon: '🔀', desc: '多维度特征的加权融合' },
+                { name: '文本相关性', icon: '📄', desc: '基于文本的相关性计算' },
+            ];
+
+            html += `
+                <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 20px;">⚖️ 11维特征精排体系</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+            `;
+
+            features.forEach(feature => {
+                html += `
+                    <div style="background: #f7fafc; padding: 16px; border-radius: 10px; border-left: 4px solid #667eea;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <span style="font-size: 24px;">${feature.icon}</span>
+                            <div style="font-size: 15px; font-weight: 600; color: #2d3748;">${feature.name}</div>
+                        </div>
+                        <div style="font-size: 13px; color: #718096; line-height: 1.5;">${feature.desc}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div></div>';
+
+            // 精排流程说明
+            html += `
+                <div style="background: white; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px;">🔄 精排流程</div>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #48bb78; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">1</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">特征提取</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">对每个候选指标提取 11 维特征向量</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #48bb78; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">2</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">特征归一化</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">对不同量纲的特征进行 Min-Max 归一化</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #48bb78; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">3</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">加权融合</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">使用预定义权重计算最终得分</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: flex-start; gap: 12px;">
+                            <div style="background: #48bb78; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">4</div>
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; color: #2d3748;">排序重排</div>
+                                <div style="font-size: 13px; color: #718096; margin-top: 4px;">按最终得分重新排序，返回 Top-K 结果</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            html += '</div>';
+            container.innerHTML = html;
         }
 
         // 页面加载后自动执行
