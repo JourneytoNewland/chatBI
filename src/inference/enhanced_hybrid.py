@@ -93,16 +93,24 @@ class EnhancedHybridIntentRecognizer:
         self.dual_recall = None
         if enable_dual_recall:
             try:
-                # 使用与系统相同的向量模型
-                import os
-                model_name = os.getenv('VECTORIZER_MODEL_NAME', 'sentence-transformers/all-MiniLM-L6-v2')
+                # 使用与 Qdrant 数据匹配的向量模型（1024维）
+                # bge-m3 与 Qdrant 中的 m3e-base 数据维度相同
+                model_name = "BAAI/bge-m3"
                 vectorizer = MetricVectorizer(model_name=model_name)
+
+                # 预加载模型，避免在线程池中加载
+                print(f"⏳ 预加载向量化器模型: {model_name}")
+                _ = vectorizer.model  # 触发模型加载
+                print("✅ 向量化器模型预加载成功")
+
                 vector_store = QdrantVectorStore()
                 neo4j_client = Neo4jClient()
                 self.dual_recall = DualRecall(vectorizer, vector_store, neo4j_client)
                 print("✅ 双路召回初始化成功")
             except Exception as e:
                 print(f"⚠️  双路召回初始化失败: {e}，使用单一语义召回")
+                import traceback
+                traceback.print_exc()
                 self.dual_recall = None
 
         # L2增强: 融合精排
@@ -344,9 +352,12 @@ class EnhancedHybridIntentRecognizer:
             def run_in_thread():
                 """在新线程中运行异步代码"""
                 try:
+                    print(f"🔍 [DEBUG] 开始双路召回: query='{query}'")
+
                     # 创建新的事件循环
                     new_loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(new_loop)
+                    print(f"🔍 [DEBUG] 事件循环创建成功")
 
                     # 运行异步双路召回
                     recall_results = new_loop.run_until_complete(
@@ -359,9 +370,14 @@ class EnhancedHybridIntentRecognizer:
                         )
                     )
 
+                    print(f"🔍 [DEBUG] 双路召回完成: 结果数量={len(recall_results) if recall_results else 0}")
+
                     result_container.append(recall_results)
                     new_loop.close()
                 except Exception as e:
+                    print(f"❌ [DEBUG] 双路召回异常: {type(e).__name__}: {e}")
+                    import traceback
+                    traceback.print_exc()
                     exception_container.append(e)
                 finally:
                     # 清理事件循环

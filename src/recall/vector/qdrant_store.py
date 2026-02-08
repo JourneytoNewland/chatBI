@@ -64,17 +64,17 @@ class QdrantVectorStore:
     def connect(self) -> QdrantClient:
         """建立连接.
 
-        使用 gRPC 接口以确保与 Qdrant 1.7.4 兼容。
+        使用 HTTP 接口以确保稳定连接。
 
         Returns:
-            QdrantClient 实例（使用 gRPC）
+            QdrantClient 实例（使用 HTTP）
         """
         if self.client is None:
             self.client = QdrantClient(
-                url=self.config.grpc_url,
+                url=self.config.http_url,
                 api_key=self.config.api_key,
                 timeout=self.config.timeout,
-                prefer_grpc=True,
+                prefer_grpc=False,  # 使用 HTTP 而不是 gRPC
             )
         return self.client
 

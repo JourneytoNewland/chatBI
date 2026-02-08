@@ -113,37 +113,47 @@ class DualRecall:
         top_k: int = 10,
     ) -> list[dict[str, Any]]:
         """同步向量召回实现."""
-        from src.recall.vector.models import MetricMetadata
+        try:
+            from src.recall.vector.models import MetricMetadata
 
-        # 向量化查询
-        query_metadata = MetricMetadata(
-            name=query,
-            code=query,
-            description=query,
-            synonyms=[],
-            domain="查询",
-        )
-        query_vector = self.vectorizer.vectorize(query_metadata)
-
-        # 向量检索
-        results = self.vector_store.search(query_vector, top_k=top_k)
-
-        # 格式化结果
-        formatted_results = []
-        for result in results:
-            payload = result["payload"]
-            formatted_results.append(
-                {
-                    "metric_id": payload["metric_id"],
-                    "name": payload["name"],
-                    "code": payload["code"],
-                    "description": payload["description"],
-                    "domain": payload.get("domain", ""),
-                    "score": result["score"],
-                }
+            print(f"  [DEBUG] 向量召回: 开始向量化查询")
+            # 向量化查询
+            query_metadata = MetricMetadata(
+                name=query,
+                code=query,
+                description=query,
+                synonyms=[],
+                domain="查询",
             )
+            query_vector = self.vectorizer.vectorize(query_metadata)
+            print(f"  [DEBUG] 向量维度: {query_vector.shape}")
 
-        return formatted_results
+            # 向量检索
+            print(f"  [DEBUG] 开始 Qdrant 搜索，top_k={top_k}")
+            results = self.vector_store.search(query_vector, top_k=top_k)
+            print(f"  [DEBUG] Qdrant 返回 {len(results)} 个结果")
+
+            # 格式化结果
+            formatted_results = []
+            for result in results:
+                payload = result["payload"]
+                formatted_results.append(
+                    {
+                        "metric_id": str(payload.get("metric_id", "")),
+                        "name": payload.get("metric_name", ""),
+                        "code": payload.get("metric_code", ""),
+                        "description": payload.get("description", ""),
+                        "domain": payload.get("domain", ""),
+                        "score": result["score"],
+                    }
+                )
+
+            return formatted_results
+        except Exception as e:
+            print(f"  [DEBUG] 向量召回异常: {type(e).__name__}: {e}")
+            import traceback
+            traceback.print_exc()
+            raise
 
     async def _graph_recall_async(
         self,
