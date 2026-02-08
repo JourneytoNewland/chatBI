@@ -93,7 +93,10 @@ class EnhancedHybridIntentRecognizer:
         self.dual_recall = None
         if enable_dual_recall:
             try:
-                vectorizer = MetricVectorizer()
+                # 使用与系统相同的向量模型
+                import os
+                model_name = os.getenv('VECTORIZER_MODEL_NAME', 'sentence-transformers/all-MiniLM-L6-v2')
+                vectorizer = MetricVectorizer(model_name=model_name)
                 vector_store = QdrantVectorStore()
                 neo4j_client = Neo4jClient()
                 self.dual_recall = DualRecall(vectorizer, vector_store, neo4j_client)
@@ -331,37 +334,61 @@ class EnhancedHybridIntentRecognizer:
             LayerResult 包含详细的召回和精排信息
         """
         try:
-            # Step 1: 双路召回（异步执行）
-            use_new_loop = False
+            # Step 1: 双路召回（使用线程池运行异步代码）
+            from concurrent.futures import ThreadPoolExecutor
+            import threading
 
-            try:
-                # 尝试获取现有事件循环
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # 如果循环正在运行，创建新循环
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    use_new_loop = True
-            except RuntimeError:
-                # 没有事件循环，创建新的
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                use_new_loop = True
+            result_container = []
+            exception_container = []
 
-            recall_results = loop.run_until_complete(
-                self.dual_recall.dual_recall(
-                    query=query,
-                    vector_top_k=50,
-                    graph_top_k=30,
-                    final_top_k=top_k * 2,  # 先召回更多，供精排使用
-                    timeout=1.0
-                )
-            )
+            def run_in_thread():
+                """在新线程中运行异步代码"""
+                try:
+                    # 创建新的事件循环
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
 
-            if use_new_loop:
-                loop.close()
+                    # 运行异步双路召回
+                    recall_results = new_loop.run_until_complete(
+                        self.dual_recall.dual_recall(
+                            query=query,
+                            vector_top_k=50,
+                            graph_top_k=30,
+                            final_top_k=top_k * 2,  # 先召回更多，供精排使用
+                            timeout=1.0
+                        )
+                    )
+
+                    result_container.append(recall_results)
+                    new_loop.close()
+                except Exception as e:
+                    exception_container.append(e)
+                finally:
+                    # 清理事件循环
+                    try:
+                        new_loop = asyncio.get_event_loop()
+                        if new_loop and not new_loop.is_closed():
+                            new_loop.close()
+                    except:
+                        pass
+
+            # 在线程池中执行
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(run_in_thread)
+                future.result(timeout=5)  # 5秒超时
+
+            # 检查异常
+            if exception_container:
+                print(f"❌ 双路召回异常: {exception_container[0]}")
+                import traceback
+                traceback.print_exc()
+                raise exception_container[0]
+
+            # 获取结果
+            recall_results = result_container[0] if result_container else None
 
             if not recall_results:
+                print(f"⚠️  双路召回返回空结果，result_container={result_container}")
                 raise Exception("双路召回未返回结果")
 
             # Step 2: 转换为 Candidate 对象（用于精排）
