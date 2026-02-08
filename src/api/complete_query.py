@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 import time
+import uuid
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -12,6 +13,7 @@ from ..mql.generator import MQLGenerator
 from ..mql.sql_generator import SQLGenerator
 from ..mql.engine import MQLExecutionEngine
 from ..mql.intelligent_interpreter import IntelligentInterpreter
+from ..inference.context import conversation_manager
 
 
 router = APIRouter(tags=["complete-query"])
@@ -28,6 +30,7 @@ class QueryRequest(BaseModel):
     """完整查询请求."""
     query: str = Field(..., description="自然语言查询")
     top_k: int = Field(default=10, ge=1, le=100, description="返回结果数量")
+    conversation_id: Optional[str] = Field(None, description="会话ID（用于多轮对话）")
 
 
 class QueryResponse(BaseModel):
@@ -40,6 +43,7 @@ class QueryResponse(BaseModel):
     interpretation: Optional[Dict[str, Any]] = None
     execution_time_ms: float
     all_layers: Optional[List[Dict[str, Any]]] = None
+    conversation_id: Optional[str] = Field(None, description="会话ID")
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -53,9 +57,16 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
     """
     start_time = time.time()
 
+    # 获取或创建会话ID
+    conversation_id = request.conversation_id or str(uuid.uuid4())
+    ctx = conversation_manager.get_or_create(conversation_id)
+
+    # 解析指代关系（使用会话上下文）
+    resolved_query = ctx.resolve_reference(request.query)
+
     try:
-        # Step 1: 意图识别（三层架构）
-        intent_result = intent_recognizer.recognize(request.query, top_k=request.top_k)
+        # Step 1: 意图识别（三层架构，使用解析后的查询）
+        intent_result = intent_recognizer.recognize(resolved_query, top_k=request.top_k)
 
         # 提取all_layers信息
         all_layers = []
@@ -152,6 +163,12 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
 
         execution_time = (time.time() - start_time) * 1000
 
+        # 更新会话上下文
+        ctx.add_turn(resolved_query, {
+            "intent": intent_dict,
+            "data": data
+        })
+
         return QueryResponse(
             query=request.query,
             intent=intent_dict,
@@ -160,7 +177,8 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
             data=data,
             interpretation=interpretation,
             execution_time_ms=execution_time,
-            all_layers=all_layers
+            all_layers=all_layers,
+            conversation_id=conversation_id
         )
 
     except Exception as e:

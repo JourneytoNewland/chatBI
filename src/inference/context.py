@@ -100,3 +100,7 @@ class ConversationManager:
         self._conversations = {
             cid: ctx for cid, ctx in self._conversations.items() if ctx.turns and ctx.turns[-1].timestamp > cutoff
         }
+
+
+# 全局单例实例
+conversation_manager = ConversationManager()
