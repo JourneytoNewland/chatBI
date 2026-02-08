@@ -227,34 +227,49 @@
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
         }
 
+        .search-input-wrapper {
+            display: flex;
+            gap: 12px;
+            align-items: stretch;
+            margin-bottom: 15px;
+        }
+
         .search-input {
-            width: calc(100% - 160px);
-            padding: 15px 20px;
-            font-size: 18px;
+            flex: 1;
+            padding: 16px 20px;
+            font-size: 16px;
             border: 2px solid #e2e8f0;
-            border-radius: 10px;
+            border-radius: 12px;
             outline: none;
+            transition: all 0.3s;
         }
 
         .search-input:focus {
             border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
         }
 
         .search-button {
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 16px 32px;
+            font-size: 16px;
             font-weight: 600;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             cursor: pointer;
-            margin-left: 10px;
-            transition: transform 0.2s;
+            transition: all 0.3s;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
         .search-button:hover {
             transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-button:active {
+            transform: translateY(0);
         }
 
         .examples {
@@ -531,6 +546,125 @@
         .followup-example-icon {
             font-size: 16px;
         }
+
+        /* 对话详情模态框 */
+        .conversation-detail-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .conversation-detail-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .conversation-detail-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .conversation-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .conversation-detail-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        .conversation-detail-close {
+            background: #e2e8f0;
+            border: none;
+            border-radius: 8px;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .conversation-detail-close:hover {
+            background: #cbd5e0;
+        }
+
+        .conversation-detail-item {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .conversation-detail-query {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .conversation-detail-result {
+            color: #4a5568;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .conversation-detail-metric {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+        }
+
+        .conversation-detail-data-count {
+            color: #718096;
+            font-size: 13px;
+        }
+
+        /* 查看详情按钮 */
+        .view-detail-btn {
+            background: transparent;
+            border: 1px solid #667eea;
+            color: #667eea;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-left: auto;
+        }
+
+        .view-detail-btn:hover {
+            background: #667eea;
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -553,6 +687,19 @@
                     <div class="conversation-empty">
                         暂无历史对话
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 对话详情模态框 -->
+        <div class="conversation-detail-modal" id="conversationDetailModal">
+            <div class="conversation-detail-content">
+                <div class="conversation-detail-header">
+                    <div class="conversation-detail-title">💬 对话详情</div>
+                    <button type="button" class="conversation-detail-close" onclick="closeConversationDetail()">✕</button>
+                </div>
+                <div id="conversationDetailBody">
+                    <!-- 详情内容将在这里动态加载 -->
                 </div>
             </div>
         </div>
@@ -599,12 +746,14 @@
 
         <!-- 搜索框 -->
         <div class="search-box">
-            <input type="text" class="search-input" id="queryInput"
-                   placeholder="请输入自然语言查询，例如：最近7天的GMV"
-                   value="最近7天的GMV">
-            <button class="search-button" onclick="executeQuery()">
-                🔍 开始智能分析
-            </button>
+            <div class="search-input-wrapper">
+                <input type="text" class="search-input" id="queryInput"
+                       placeholder="请输入自然语言查询，例如：最近7天的GMV"
+                       value="最近7天的GMV">
+                <button type="button" class="search-button" onclick="executeQuery()">
+                    🔍 开始智能分析
+                </button>
+            </div>
 
             <!-- 多轮对话引导 -->
             <div class="conversation-guide" id="conversationGuide">
@@ -725,12 +874,88 @@
             }
 
             container.innerHTML = conversationHistory.map((conv, index) => `
-                <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}"
-                     onclick="switchConversation('${conv.id}')">
-                    <div class="conversation-query">${conv.query}</div>
-                    <div class="conversation-time">${conv.time}</div>
+                <div class="conversation-item ${conv.id === currentConversationId ? 'active' : ''}">
+                    <div onclick="switchConversation('${conv.id}')" style="flex: 1; cursor: pointer;">
+                        <div class="conversation-query">${conv.query}</div>
+                        <div class="conversation-time">${conv.time}</div>
+                    </div>
+                    <button type="button" class="view-detail-btn" onclick="showConversationDetail('${conv.id}')">详情</button>
                 </div>
             `).join('');
+        }
+
+        // 显示对话详情
+        function showConversationDetail(convId) {
+            const conv = conversationHistory.find(c => c.id === convId);
+            if (!conv) return;
+
+            const modal = document.getElementById('conversationDetailModal');
+            const body = document.getElementById('conversationDetailBody');
+
+            const data = conv.data;
+            if (!data) {
+                body.innerHTML = '<p style="color: #718096; text-align: center; padding: 40px;">该对话没有保存详细数据</p>';
+                modal.classList.add('active');
+                return;
+            }
+
+            const intent = data.intent || {};
+            const interpretation = data.interpretation || {};
+            const resultData = data.data || [];
+            const metric = intent.core_query || 'N/A';
+            const dimensions = intent.dimensions || [];
+            const timeRange = intent.time_range || [];
+
+            let html = `
+                <div class="conversation-detail-item">
+                    <div class="conversation-detail-query">❓ 查询问题</div>
+                    <div class="conversation-detail-result">${conv.query}</div>
+                </div>
+
+                <div class="conversation-detail-item">
+                    <div class="conversation-detail-query">🎯 核心指标</div>
+                    <div class="conversation-detail-result">
+                        <span class="conversation-detail-metric">${metric}</span>
+                        ${dimensions.length > 0 ? `<span class="conversation-detail-metric">维度: ${dimensions.join(', ')}</span>` : ''}
+                        ${timeRange.length > 0 ? `<span class="conversation-detail-metric">时间范围</span>` : ''}
+                        <div class="conversation-detail-data-count">返回 ${resultData.length} 条数据</div>
+                    </div>
+                </div>
+            `;
+
+            if (interpretation.summary) {
+                html += `
+                    <div class="conversation-detail-item">
+                        <div class="conversation-detail-query">🤖 智能解读</div>
+                        <div class="conversation-detail-result">${interpretation.summary}</div>
+                        ${interpretation.trend ? `<div class="conversation-detail-result">趋势: ${interpretation.trend}</div>` : ''}
+                    </div>
+                `;
+            }
+
+            if (resultData.length > 0) {
+                html += `
+                    <div class="conversation-detail-item">
+                        <div class="conversation-detail-query">📊 数据预览（前3条）</div>
+                        <div class="conversation-detail-result">
+                            ${resultData.slice(0, 3).map((row, i) => {
+                                const date = row.date || row.date || `数据${i+1}`;
+                                const value = row.value || row.metric_value || 0;
+                                return `<div style="margin-bottom: 8px;">${date}: ${value.toLocaleString()}</div>`;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            body.innerHTML = html;
+            modal.classList.add('active');
+        }
+
+        // 关闭对话详情
+        function closeConversationDetail() {
+            const modal = document.getElementById('conversationDetailModal');
+            modal.classList.remove('active');
         }
 
         // 新建会话
@@ -1577,6 +1802,13 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
             // 回车键支持
             document.getElementById('queryInput').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') executeQuery();
+            });
+
+            // 点击模态框背景关闭
+            document.getElementById('conversationDetailModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeConversationDetail();
+                }
             });
 
             // 如果没有历史记录，自动执行示例查询
