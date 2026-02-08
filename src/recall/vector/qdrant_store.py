@@ -14,6 +14,7 @@ from qdrant_client.http.models import (
     PointStruct,
     UpdateStatus,
     VectorParams,
+    HnswConfigDiff,
 )
 
 from src.config import QdrantConfig
@@ -64,18 +65,25 @@ class QdrantVectorStore:
     def connect(self) -> QdrantClient:
         """建立连接.
 
-        使用 HTTP 接口以确保稳定连接。
+        优先检查 path/location 配置以启用本地模式，否则使用 HTTP 连接。
 
         Returns:
-            QdrantClient 实例（使用 HTTP）
+            QdrantClient 实例
         """
         if self.client is None:
-            self.client = QdrantClient(
-                url=self.config.http_url,
-                api_key=self.config.api_key,
-                timeout=self.config.timeout,
-                prefer_grpc=False,  # 使用 HTTP 而不是 gRPC
-            )
+            if self.config.path or self.config.location:
+                print(f"📦 初始化 Qdrant 本地模式: path={self.config.path}, location={self.config.location}")
+                self.client = QdrantClient(
+                    location=self.config.location,
+                    path=self.config.path,
+                )
+            else:
+                self.client = QdrantClient(
+                    url=self.config.http_url,
+                    api_key=self.config.api_key,
+                    timeout=self.config.timeout,
+                    prefer_grpc=False,  # 使用 HTTP 而不是 gRPC
+                )
         return self.client
 
     def create_collection(
@@ -98,12 +106,18 @@ class QdrantVectorStore:
         client = self.connect()
         collection_name = self.config.collection_name
 
-        # 检查 collection 是否存在
-        if recreate and client.collection_exists(collection_name):
-            client.delete_collection(collection_name)
+        if recreate:
+            try:
+                client.delete_collection(collection_name)
+            except Exception:
+                pass
 
-        if client.collection_exists(collection_name):
-            return True
+        # 检查 collection 是否存在
+        try:
+             if client.collection_exists(collection_name):
+                 return True
+        except Exception:
+            pass
 
         try:
             client.create_collection(
@@ -111,10 +125,10 @@ class QdrantVectorStore:
                 vectors_config=VectorParams(
                     size=vector_size,
                     distance=Distance.COSINE,
-                    hnsw_config={
-                        "m": self.DEFAULT_M,
-                        "ef_construction": self.DEFAULT_EF_CONSTRUCTION,
-                    },
+                ),
+                hnsw_config=HnswConfigDiff(
+                    m=self.DEFAULT_M,
+                    ef_construct=self.DEFAULT_EF_CONSTRUCTION,
                 ),
             )
             return True

@@ -29,6 +29,8 @@ class QdrantConfig(BaseSettings):
     collection_name: str = Field(default="metrics", description="Collection 名称")
     api_key: Optional[str] = Field(default=None, description="API密钥")
     timeout: float = Field(default=5.0, description="请求超时时间（秒）")
+    path: Optional[str] = Field(default=None, description="Qdrant 本地持久化路径")
+    location: Optional[str] = Field(default=None, description="Qdrant 存储位置 (:memory: or path)")
 
     @property
     def http_url(self) -> str:
@@ -52,7 +54,7 @@ class VectorizerConfig(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="VECTORIZER_", env_file=".env", extra="ignore")
 
-    model_name: str = Field(default="sentence-transformers/all-MiniLM-L6-v2", description="预训练模型名称")
+    model_name: str = Field(default="moka-ai/m3e-base", description="预训练模型名称(中文优化)")
     device: str = Field(default="cpu", description="运行设备")
     batch_size: int = Field(default=32, description="批处理大小")
 

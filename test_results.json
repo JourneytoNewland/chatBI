@@ -1,0 +1,248 @@
+{
+  "summary": {
+    "total": 30,
+    "passed": 22,
+    "failed": 8,
+    "success_rate": 73.33333333333333
+  },
+  "details": {
+    "vector_search": [
+      {
+        "query": "销售额",
+        "expected": "GMV",
+        "actual": "ROI",
+        "score": 0.21973743,
+        "passed": false
+      },
+      {
+        "query": "日活用户",
+        "expected": "DAU",
+        "actual": "DAU",
+        "score": 0.43491763,
+        "passed": true
+      },
+      {
+        "query": "订单数量",
+        "expected": "订单量",
+        "actual": "新增用户",
+        "score": 0.22715631,
+        "passed": false
+      },
+      {
+        "query": "用户留存",
+        "expected": "留存率",
+        "actual": "新增用户",
+        "score": 0.22715631,
+        "passed": false
+      },
+      {
+        "query": "投资回报",
+        "expected": "ROI",
+        "actual": "新增用户",
+        "score": 0.22715631,
+        "passed": false
+      },
+      {
+        "query": "销售额",
+        "expected": "GMV",
+        "actual": "ROI",
+        "score": 0.21973743,
+        "passed": false
+      },
+      {
+        "query": "日活用户",
+        "expected": "DAU",
+        "actual": "DAU",
+        "score": 0.43491763,
+        "passed": true
+      },
+      {
+        "query": "订单数量",
+        "expected": "订单量",
+        "actual": "新增用户",
+        "score": 0.22715631,
+        "passed": false
+      },
+      {
+        "query": "用户留存",
+        "expected": "留存率",
+        "actual": "新增用户",
+        "score": 0.22715631,
+        "passed": false
+      },
+      {
+        "query": "投资回报",
+        "expected": "ROI",
+        "actual": "新增用户",
+        "score": 0.22715631,
+        "passed": false
+      }
+    ],
+    "graph_search": [
+      {
+        "domain": "电商",
+        "expected_min": 3,
+        "actual_count": 4,
+        "passed": true
+      },
+      {
+        "domain": "用户",
+        "expected_min": 3,
+        "actual_count": 4,
+        "passed": true
+      },
+      {
+        "domain": "电商",
+        "expected_min": 3,
+        "actual_count": 4,
+        "passed": true
+      },
+      {
+        "domain": "用户",
+        "expected_min": 3,
+        "actual_count": 4,
+        "passed": true
+      }
+    ],
+    "llm_intent": [
+      {
+        "query": "本月按渠道统计DAU",
+        "result": {
+          "dimensions": [
+            "渠道"
+          ],
+          "time_range": {
+            "type": "absolute",
+            "value": "this_month",
+            "description": "本月"
+          },
+          "comparison": null
+        },
+        "passed": true
+      },
+      {
+        "query": "按地区的成交金额同比",
+        "result": {
+          "dimensions": [
+            "地区"
+          ],
+          "time_range": null,
+          "comparison": "yoy"
+        },
+        "passed": true
+      },
+      {
+        "query": "最近7天的GMV",
+        "result": {
+          "dimensions": [],
+          "time_range": {
+            "type": "relative",
+            "value": "7d",
+            "description": "最近7天"
+          },
+          "comparison": null
+        },
+        "passed": true
+      },
+      {
+        "query": "本月按渠道统计DAU",
+        "result": {
+          "dimensions": [
+            "渠道"
+          ],
+          "time_range": {
+            "type": "absolute",
+            "value": "this_month",
+            "description": "本月"
+          },
+          "comparison": null
+        },
+        "passed": true
+      },
+      {
+        "query": "按地区的成交金额同比",
+        "result": {
+          "dimensions": [
+            "地区"
+          ],
+          "time_range": null,
+          "comparison": "yoy"
+        },
+        "passed": true
+      },
+      {
+        "query": "最近7天的GMV",
+        "result": {
+          "dimensions": [],
+          "time_range": {
+            "type": "relative",
+            "value": "7d",
+            "description": "最近7天"
+          },
+          "comparison": null
+        },
+        "passed": true
+      }
+    ],
+    "sql_generation": [
+      {
+        "name": "Simple Query",
+        "sql_length": 259,
+        "passed": true
+      },
+      {
+        "name": "Dimension Query",
+        "sql_length": 360,
+        "passed": true
+      },
+      {
+        "name": "Simple Query",
+        "sql_length": 259,
+        "passed": true
+      },
+      {
+        "name": "Dimension Query",
+        "sql_length": 360,
+        "passed": true
+      }
+    ],
+    "e2e_flow": [
+      {
+        "query": "最近7天的GMV",
+        "metric": "GMV",
+        "sql_generated": true,
+        "passed": true
+      },
+      {
+        "query": "本月按渠道统计DAU",
+        "metric": "DAU",
+        "sql_generated": true,
+        "passed": true
+      },
+      {
+        "query": "电商订单量",
+        "metric": "订单量",
+        "sql_generated": true,
+        "passed": true
+      },
+      {
+        "query": "最近7天的GMV",
+        "metric": "GMV",
+        "sql_generated": true,
+        "passed": true
+      },
+      {
+        "query": "本月按渠道统计DAU",
+        "metric": "DAU",
+        "sql_generated": true,
+        "passed": true
+      },
+      {
+        "query": "电商订单量",
+        "metric": "订单量",
+        "sql_generated": true,
+        "passed": true
+      }
+    ]
+  }
+}

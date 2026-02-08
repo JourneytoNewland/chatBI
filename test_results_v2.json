@@ -1,0 +1,302 @@
+{
+  "summary": {
+    "total": 54,
+    "passed": 54,
+    "failed": 0,
+    "success_rate": 100.0
+  },
+  "details": {
+    "graph_search": [
+      {
+        "domain": "电商",
+        "expected_min": 3,
+        "actual_count": 11,
+        "passed": true
+      },
+      {
+        "domain": "用户",
+        "expected_min": 3,
+        "actual_count": 6,
+        "passed": true
+      },
+      {
+        "domain": "电商",
+        "expected_min": 3,
+        "actual_count": 11,
+        "passed": true
+      },
+      {
+        "domain": "用户",
+        "expected_min": 3,
+        "actual_count": 6,
+        "passed": true
+      }
+    ],
+    "llm_intent": [
+      {
+        "query": "本月按渠道统计DAU",
+        "passed": true
+      },
+      {
+        "query": "按地区的成交金额同比",
+        "passed": true
+      },
+      {
+        "query": "最近7天的GMV",
+        "passed": true
+      },
+      {
+        "query": "销售额趋势",
+        "passed": true
+      },
+      {
+        "query": "本月按渠道统计DAU",
+        "passed": true
+      },
+      {
+        "query": "按地区的成交金额同比",
+        "passed": true
+      },
+      {
+        "query": "最近7天的GMV",
+        "passed": true
+      },
+      {
+        "query": "销售额趋势",
+        "passed": true
+      }
+    ],
+    "sql_generation": [
+      {
+        "name": "Simple Query",
+        "passed": true
+      },
+      {
+        "name": "Dimension Query",
+        "passed": true
+      },
+      {
+        "name": "Simple Query",
+        "passed": true
+      },
+      {
+        "name": "Dimension Query",
+        "passed": true
+      }
+    ],
+    "e2e_flow": [
+      {
+        "query": "最近7天的GMV",
+        "metric": "GMV",
+        "passed": true
+      },
+      {
+        "query": "本月按渠道统计DAU",
+        "metric": "DAU",
+        "passed": true
+      },
+      {
+        "query": "电商订单量",
+        "metric": "订单量",
+        "passed": true
+      },
+      {
+        "query": "销售额",
+        "metric": "GMV",
+        "passed": true
+      },
+      {
+        "query": "订单数量",
+        "metric": "订单量",
+        "passed": true
+      },
+      {
+        "query": "用户留存",
+        "metric": "留存率",
+        "passed": true
+      },
+      {
+        "query": "投资回报",
+        "metric": "ROI",
+        "passed": true
+      },
+      {
+        "query": "日活用户",
+        "metric": "DAU",
+        "passed": true
+      },
+      {
+        "query": "有效订单量",
+        "metric": "有效订单量",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "支付订单量",
+        "metric": "支付订单量",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "退款订单量",
+        "metric": "退款订单量",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "预测GMV",
+        "metric": "预测GMV",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "日均GMV",
+        "metric": "日均GMV",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "点击转化率",
+        "metric": "点击转化率",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "支付转化率",
+        "metric": "支付转化率",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "发货时长",
+        "metric": "发货时长",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "配送时长",
+        "metric": "配送时长",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "净利",
+        "metric": "净利",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "毛利",
+        "metric": "毛利",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "最近7天的GMV",
+        "metric": "GMV",
+        "passed": true
+      },
+      {
+        "query": "本月按渠道统计DAU",
+        "metric": "DAU",
+        "passed": true
+      },
+      {
+        "query": "电商订单量",
+        "metric": "订单量",
+        "passed": true
+      },
+      {
+        "query": "销售额",
+        "metric": "GMV",
+        "passed": true
+      },
+      {
+        "query": "订单数量",
+        "metric": "订单量",
+        "passed": true
+      },
+      {
+        "query": "用户留存",
+        "metric": "留存率",
+        "passed": true
+      },
+      {
+        "query": "投资回报",
+        "metric": "ROI",
+        "passed": true
+      },
+      {
+        "query": "日活用户",
+        "metric": "DAU",
+        "passed": true
+      },
+      {
+        "query": "有效订单量",
+        "metric": "有效订单量",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "支付订单量",
+        "metric": "支付订单量",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "退款订单量",
+        "metric": "退款订单量",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "预测GMV",
+        "metric": "预测GMV",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "日均GMV",
+        "metric": "日均GMV",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "点击转化率",
+        "metric": "点击转化率",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "支付转化率",
+        "metric": "支付转化率",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "发货时长",
+        "metric": "发货时长",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "配送时长",
+        "metric": "配送时长",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "净利",
+        "metric": "净利",
+        "passed": true,
+        "type": "adversarial"
+      },
+      {
+        "query": "毛利",
+        "metric": "毛利",
+        "passed": true,
+        "type": "adversarial"
+      }
+    ]
+  }
+}

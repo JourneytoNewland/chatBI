@@ -4,7 +4,8 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any
 
-from src.inference.intent import QueryIntent, TimeRange, AggregationType
+from src.inference.intent import QueryIntent, AggregationType
+from src.config.metric_loader import metric_loader
 
 logger = logging.getLogger(__name__)
 
@@ -19,55 +20,8 @@ class SQLGeneratorV2:
         postgres_client: PostgreSQL客户端
     """
 
-    # 指标到事实表的映射
-    METRIC_TABLE_MAPPING = {
-        # 电商指标 -> fact_orders
-        "GMV": ("fact_orders", "gmv"),
-        "成交金额": ("fact_orders", "gmv"),
-        "订单量": ("fact_orders", "order_count"),
-        "客单价": ("fact_orders", "average_order_value"),
-        "折扣金额": ("fact_orders", "total_discount"),
-        "订单总额": ("fact_orders", "total_order_amount"),
-
-        # 用户指标 -> fact_user_activity
-        "DAU": ("fact_user_activity", "dau"),
-        "日活": ("fact_user_activity", "dau"),
-        "MAU": ("fact_user_activity", "mau"),
-        "月活": ("fact_user_activity", "mau"),
-        "新增用户": ("fact_user_activity", "new_users"),
-        "留存率": ("fact_user_activity", "retention_day7"),
-        "次日留存": ("fact_user_activity", "retention_day1"),
-        "7日留存": ("fact_user_activity", "retention_day7"),
-        "30日留存": ("fact_user_activity", "retention_day30"),
-        "平均会话时长": ("fact_user_activity", "avg_session_duration"),
-        "页面浏览量": ("fact_user_activity", "page_views"),
-
-        # 流量指标 -> fact_traffic
-        "访客数": ("fact_traffic", "visitors"),
-        "独立访客": ("fact_traffic", "unique_visitors"),
-        "加购次数": ("fact_traffic", "add_to_cart_count"),
-        "加购转化率": ("fact_traffic", "cart_conversion_rate"),
-        "结账次数": ("fact_traffic", "checkout_count"),
-        "结账转化率": ("fact_traffic", "checkout_conversion_rate"),
-        "订单转化率": ("fact_traffic", "order_conversion_rate"),
-
-        # 收入指标 -> fact_revenue
-        "ARPU": ("fact_revenue", "arpu"),
-        "ARPPU": ("fact_revenue", "arppu"),
-        "总收入": ("fact_revenue", "total_revenue"),
-        "LTV": ("fact_revenue", "ltv_30d"),
-        "生命周期价值": ("fact_revenue", "ltv_90d"),
-
-        # 财务指标 -> fact_finance
-        "营收": ("fact_finance", "revenue"),
-        "收入": ("fact_finance", "revenue"),
-        "毛利润": ("fact_finance", "gross_profit"),
-        "毛利率": ("fact_finance", "gross_profit_margin"),
-        "净利润": ("fact_finance", "net_profit"),
-        "净利率": ("fact_finance", "net_profit_margin"),
-        "ROI": ("fact_finance", "roi"),
-        "投资回报率": ("fact_finance", "roi"),
-    }
+    # 指标到事实表的映射 (已通过 MetricLoader 动态加载)
+    # METRIC_TABLE_MAPPING = {...}
 
     # 聚合类型到SQL函数的映射
     AGGREGATION_SQL_MAP = {
@@ -159,11 +113,26 @@ class SQLGeneratorV2:
         Raises:
             ValueError: 指标不支持时抛出
         """
-        metric_info = self.METRIC_TABLE_MAPPING.get(metric_name)
-        if not metric_info:
-            raise ValueError(f"不支持的指标: {metric_name}")
+        # 1. 尝试从配置中加载
+        all_metrics = metric_loader.get_all_metrics()
+        
+        # 按名称长度降序排序，优先匹配长词
+        sorted_metrics = sorted(all_metrics, key=lambda m: len(m['name']), reverse=True)
+        
+        for metric in sorted_metrics:
+            # 检查名称
+            if metric['name'].lower() in metric_name.lower():
+                return metric['table'], metric['column']
+            # 检查同义词
+            for syn in metric.get('synonyms', []):
+                if syn.lower() in metric_name.lower():
+                    return metric['table'], metric['column']
 
-        return metric_info
+        # 2. 如果配置中没有，抛出异常或使用默认值
+        # 这里为了兼容性，可以暂时保留一个默认回退，或者直接报错
+        # logging.warning(f"未在配置中找到指标: {metric_name}，尝试使用默认映射")
+        
+        raise ValueError(f"不支持的指标: {metric_name}")
 
     def _build_select_clause(
         self,
@@ -262,39 +231,24 @@ class SQLGeneratorV2:
 
         return where_clause, params
 
-    def _parse_time_range(self, time_range: TimeRange) -> Tuple[str, str]:
+    def _parse_time_range(self, time_range: Optional[Tuple[datetime, datetime]]) -> Tuple[str, str]:
         """解析时间范围.
 
         Args:
-            time_range: 时间范围对象
+            time_range: 时间范围 (start_date, end_date)
 
         Returns:
             (开始日期, 结束日期)
         """
         # 如果是具体日期范围，直接使用
-        if hasattr(time_range, 'start_date') and hasattr(time_range, 'end_date'):
-            return time_range.start_date.strftime("%Y-%m-%d"), time_range.end_date.strftime("%Y-%m-%d")
+        if time_range and isinstance(time_range, (tuple, list)) and len(time_range) == 2:
+             start_date, end_date = time_range
+             return start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
 
-        # 否则使用相对时间计算
+        # 默认：最近7天
         from datetime import timedelta, datetime
-
         end_date = datetime.now()
-        start_date = end_date
-
-        # 根据时间粒度计算
-        if time_range.granularity:
-            if "day" in str(time_range.granularity).lower():
-                # 最近N天
-                if hasattr(time_range, 'days'):
-                    start_date = end_date - timedelta(days=time_range.days)
-                else:
-                    start_date = end_date - timedelta(days=7)  # 默认7天
-            elif "week" in str(time_range.granularity).lower():
-                # 最近N周
-                start_date = end_date - timedelta(weeks=1)
-            elif "month" in str(time_range.granularity).lower():
-                # 最近N月
-                start_date = end_date - timedelta(days=30)
+        start_date = end_date - timedelta(days=7)
 
         return start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
 
@@ -357,7 +311,7 @@ class SQLGeneratorV2:
 
 # 测试
 if __name__ == "__main__":
-    from src.inference.intent import QueryIntent, TimeRange, AggregationType
+    from src.inference.intent import QueryIntent, AggregationType
 
     print("\n🧪 测试SQL生成器V2")
     print("=" * 60)
@@ -368,7 +322,13 @@ if __name__ == "__main__":
     print("\n测试1: 简单查询 - GMV")
     intent1 = QueryIntent(
         query="GMV",
-        core_query="GMV"
+        core_query="GMV",
+        time_range=None,
+        time_granularity=None,
+        aggregation_type=None,
+        dimensions=[],
+        comparison_type=None,
+        filters={}
     )
     sql1, params1 = generator.generate(intent1)
     print(f"Intent: {intent1.core_query}")
@@ -378,10 +338,17 @@ if __name__ == "__main__":
     # 测试2: 时间范围查询 - 最近7天GMV
     print("\n" + "=" * 60)
     print("\n测试2: 时间范围查询 - 最近7天GMV")
+    from datetime import datetime, timedelta
+    now = datetime.now()
     intent2 = QueryIntent(
         query="最近7天GMV",
         core_query="GMV",
-        time_range=TimeRange(granularity="day")
+        time_range=(now - timedelta(days=7), now),
+        time_granularity=None,
+        aggregation_type=None,
+        dimensions=[],
+        comparison_type=None,
+        filters={}
     )
     sql2, params2 = generator.generate(intent2)
     print(f"Intent: {intent2.core_query}")
@@ -394,7 +361,12 @@ if __name__ == "__main__":
     intent3 = QueryIntent(
         query="按地区GMV",
         core_query="GMV",
-        dimensions=["地区"]
+        dimensions=["地区"],
+        time_range=None,
+        time_granularity=None,
+        aggregation_type=None,
+        comparison_type=None,
+        filters={}
     )
     sql3, params3 = generator.generate(intent3)
     print(f"Intent: {intent3.core_query}")
@@ -409,7 +381,11 @@ if __name__ == "__main__":
         query="本月GMV总和",
         core_query="GMV",
         aggregation_type=AggregationType.SUM,
-        time_range=TimeRange(granularity="month")
+        time_range=(now.replace(day=1), now), # Mock本月
+        dimensions=[],
+        time_granularity=None,
+        comparison_type=None,
+        filters={}
     )
     sql4, params4 = generator.generate(intent4)
     print(f"Intent: {intent4.core_query}")
@@ -424,7 +400,11 @@ if __name__ == "__main__":
         query="最近7天按渠道统计DAU",
         core_query="DAU",
         dimensions=["渠道"],
-        time_range=TimeRange(granularity="day")
+        time_range=(now - timedelta(days=7), now),
+        time_granularity=None,
+        aggregation_type=None,
+        comparison_type=None,
+        filters={}
     )
     sql5, params5 = generator.generate(intent5)
     print(f"Intent: {intent5.core_query}")

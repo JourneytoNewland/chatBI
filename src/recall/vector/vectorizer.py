@@ -9,13 +9,13 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 
+from src.config import settings
 from src.recall.vector.models import MetricMetadata
-
 
 class MetricVectorizer:
     """指标向量化器.
 
-    使用 m3e-base 模型将指标元数据的多个字段拼接后生成向量.
+    使用预训练模型将指标元数据的多个字段拼接后生成向量.
     支持单条和批量向量化，模型延迟加载以避免导入时初始化.
 
     Attributes:
@@ -23,13 +23,13 @@ class MetricVectorizer:
         _model: SentenceTransformer 模型实例（延迟加载）
     """
 
-    def __init__(self, model_name: str = "m3e-base") -> None:
+    def __init__(self, model_name: str = None) -> None:
         """初始化向量化器.
 
         Args:
-            model_name: 预训练模型名称，默认为 m3e-base
+            model_name: 预训练模型名称，默认为配置中的模型
         """
-        self.model_name = model_name
+        self.model_name = model_name or settings.vectorizer.model_name
         self._model: Optional[SentenceTransformer] = None
 
     @property
@@ -59,17 +59,30 @@ class MetricVectorizer:
         Returns:
             拼接后的文本字符串
         """
-        synonyms_str = "、".join(metadata.synonyms) if metadata.synonyms else "无"
-        formula_str = metadata.formula if metadata.formula else "无"
-
-        template = f"""指标名称: {metadata.name}
-指标编码: {metadata.code}
-业务含义: {metadata.description}
-同义词: {synonyms_str}
-业务域: {metadata.domain}
-计算公式: {formula_str}"""
-
-        return template.strip()
+        # 增强版本:重复关键信息以提高向量匹配准确性
+        parts = []
+        
+        # 1. 指标名称(重复3次以增强权重)
+        parts.append(f"{metadata.name} {metadata.name} {metadata.name}")
+        
+        # 2. 同义词(每个重复2次)
+        if metadata.synonyms:
+            synonym_text = " ".join([f"{syn} {syn}" for syn in metadata.synonyms])
+            parts.append(synonym_text)
+        
+        # 3. 描述
+        if metadata.description:
+            parts.append(metadata.description)
+        
+        # 4. 领域
+        if metadata.domain:
+            parts.append(f"领域:{metadata.domain}")
+        
+        # 5. 公式(如果有)
+        if metadata.formula:
+            parts.append(f"计算:{metadata.formula}")
+        
+        return " ".join(parts)
 
     def vectorize(self, metadata: MetricMetadata) -> np.ndarray:
         """单条指标向量化.

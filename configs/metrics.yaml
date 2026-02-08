@@ -1,0 +1,690 @@
+metrics:
+  # 电商指标
+  - id: m001
+    name: GMV
+    code: gmv
+    description: 成交总额（Gross Merchandise Volume）
+    domain: 电商
+    table: fact_orders
+    column: gmv
+    unit: 元
+    synonyms:
+      - 成交金额
+      - 交易额
+      - 成交总额
+      - 销售额
+      - 卖了多少钱
+    formula: SUM(order_amount)
+    
+  - id: m002
+    name: 订单量
+    code: order_count
+    description: 成交订单数量
+    domain: 电商
+    table: fact_orders
+    column: order_count
+    unit: 单
+    synonyms:
+      - 成交单量
+      - 订单数
+      - 订单数量
+      - 交易笔数
+    formula: COUNT(order_id)
+
+  - id: m003
+    name: 客单价
+    code: average_order_value
+    description: 平均每单金额
+    domain: 电商
+    table: fact_orders
+    column: average_order_value
+    unit: 元/单
+    synonyms:
+      - 平均客单价
+      - 平均订单金额
+      - 笔单价
+    formula: SUM(order_amount) / COUNT(orders)
+    
+  - id: m004
+    name: 转化率
+    code: conversion_rate
+    description: 访客转化为用户的比例
+    domain: 电商
+    table: fact_traffic
+    column: order_conversion_rate
+    unit: "%"
+    synonyms:
+      - 转化比率
+      - 访问转化率
+      - 购买转化率
+    formula: COUNT(conversions) / COUNT(visitors) * 100
+
+  # 用户指标
+  - id: u001
+    name: DAU
+    code: dau
+    description: 日活跃用户数（Daily Active Users）
+    domain: 用户
+    table: fact_user_activity
+    column: dau
+    unit: 人
+    synonyms:
+      - 日活
+      - 日活跃用户
+      - 每日活跃用户
+      - 每天有多少人来
+    formula: COUNT(active_users WHERE date = current_date)
+
+  - id: u002
+    name: MAU
+    code: mau
+    description: 月活跃用户数（Monthly Active Users）
+    domain: 用户
+    table: fact_user_activity
+    column: mau
+    unit: 人
+    synonyms:
+      - 月活
+      - 月活跃用户
+      - 每月活跃用户
+    formula: COUNT(active_users WHERE month = current_month)
+
+  - id: u003
+    name: 新增用户
+    code: new_users
+    description: 新注册用户数
+    domain: 用户
+    table: fact_user_activity
+    column: new_users
+    unit: 人
+    synonyms:
+      - 新用户
+      - 注册用户
+      - 纳新
+    formula: COUNT(new_users)
+
+  - id: u004
+    name: 留存率
+    code: retention_rate
+    description: 用户留存比率（默认7日）
+    domain: 用户
+    table: fact_user_activity
+    column: retention_day7
+    unit: "%"
+    synonyms:
+      - 用户留存
+      - 留存
+      - 7日留存
+    formula: retained_users / total_users * 100
+
+  # 营收指标
+  - id: r001
+    name: 营收
+    code: revenue
+    description: 企业总收入
+    domain: 财务
+    table: fact_finance
+    column: revenue
+    unit: 元
+    synonyms:
+      - 收入
+      - 总收入
+      - 营业额
+    formula: SUM(revenue)
+
+  - id: r002
+    name: ARPU
+    code: arpu
+    description: 平均每用户收入（Average Revenue Per User）
+    domain: 财务
+    table: fact_revenue
+    column: arpu
+    unit: 元/人
+    synonyms:
+      - 人均收入
+      - 每用户平均收入
+      - 客单产
+    formula: SUM(revenue) / COUNT(users)
+
+  - id: r003
+    name: LTV
+    code: ltv
+    description: 用户生命周期价值（Lifetime Value）
+    domain: 财务
+    table: fact_revenue
+    column: ltv_30d
+    unit: 元
+    synonyms:
+      - 生命周期价值
+      - 用户价值
+    formula: ARPU * lifespan
+
+  - id: r004
+    name: ROI
+    code: roi
+    description: 投资回报率（Return on Investment）
+    domain: 财务
+    table: fact_finance
+    column: roi
+    unit: "%"
+    synonyms:
+      - 投资回报率
+      - 投资回报
+      - 回报率
+      - 投入产出比
+    formula: (revenue - cost) / cost * 100
+
+  # === 干扰性测试指标 (高相似度/递归命名/语义重叠) ===
+
+  # 1. 订单量干扰组
+  - id: m002_adv1
+    name: 有效订单量
+    code: valid_order_count
+    description: 剔除取消和退款后的有效订单数量
+    domain: 电商
+    table: fact_orders
+    column: valid_order_count
+    unit: 单
+    synonyms:
+      - 净订单量
+      - 实际订单数
+      - 订单数量(有效)
+    formula: COUNT(order_id WHERE status = 'valid')
+
+  - id: m002_adv2
+    name: 支付订单量
+    code: paid_order_count
+    description: 已完成支付的订单数量
+    domain: 电商
+    table: fact_orders
+    column: paid_order_count
+    unit: 单
+    synonyms:
+      - 付款单量
+      - 支付笔数
+    formula: COUNT(order_id WHERE status = 'paid')
+
+  - id: m002_adv3
+    name: 退款订单量
+    code: refund_order_count
+    description: 发生退款的订单数量
+    domain: 电商
+    table: fact_orders
+    column: refund_count
+    unit: 单
+    synonyms:
+      - 退单量
+      - 退款数
+    formula: COUNT(order_id WHERE status = 'refunded')
+
+  # 2. GMV干扰组
+  - id: m001_adv1
+    name: 预测GMV
+    code: predicted_gmv
+    description: 基于算法预测的未来GMV
+    domain: 电商
+    table: fact_projections
+    column: pred_gmv
+    unit: 元
+    synonyms:
+      - 预估销售额
+      - 预测成交额
+    formula: PREDICT(gmv)
+
+  - id: m001_adv2
+    name: 日均GMV
+    code: avg_daily_gmv
+    description: 平均每天的成交总额
+    domain: 电商
+    table: fact_daily_stats
+    column: daily_gmv
+    unit: 元
+    synonyms:
+      - 每天卖多少钱
+      - 日均销售额
+    formula: SUM(gmv) / COUNT(days)
+
+  # 3. 活跃用户干扰组
+  - id: u001_adv1
+    name: 活跃买家数
+    code: daily_active_buyers
+    description: 当天有购买行为的活跃用户
+    domain: 用户
+    table: fact_user_activity
+    column: dab
+    unit: 人
+    synonyms:
+      - 购买用户数
+      - 成交用户数
+      - 活跃买家
+    formula: COUNT(users WHERE action = 'buy')
+
+  - id: u001_adv2
+    name: 活跃卖家数
+    code: daily_active_sellers
+    description: 当天有上架或管理行为的商家
+    domain: 用户
+    table: fact_seller_activity
+    column: das
+    unit: 人
+    synonyms:
+      - 活跃商家
+      - 动销商家
+    formula: COUNT(sellers WHERE active = true)
+
+  # 4. 转化率干扰组
+  - id: m004_adv1
+    name: 点击转化率
+    code: ctr
+    description: 曝光到点击的转化比例
+    domain: 电商
+    table: fact_traffic
+    column: ctr
+    unit: "%"
+    synonyms:
+      - 点击率
+      - CTR
+    formula: clicks / impressions * 100
+
+  - id: m004_adv2
+    name: 支付转化率
+    code: payment_rate
+    description: 下单到支付的转化比例
+    domain: 电商
+    table: fact_orders
+    column: payment_rate
+    unit: "%"
+    synonyms:
+      - 付款转化率
+      - 支付率
+    formula: paid_orders / created_orders * 100
+
+  # 5. 物流/服务干扰组 (语义模糊)
+  - id: s001
+    name: 发货时长
+    code: shipping_time
+    description: 订单支付到发货的时间间隔
+    domain: 服务
+    table: fact_fulfillment
+    column: ship_duration
+    unit: 小时
+    synonyms:
+      - 发货耗时
+      - 商家发货快慢
+    formula: AVG(ship_time - pay_time)
+
+  - id: s002
+    name: 配送时长
+    code: delivery_time
+    description: 发货到用户签收的时间间隔
+    domain: 服务
+    table: fact_fulfillment
+    column: deliver_duration
+    unit: 小时
+    synonyms:
+      - 物流时长
+      - 路上跑了多久
+    formula: AVG(sign_time - ship_time)
+
+  - id: s003
+    name: 平均签收时长
+    code: avg_sign_time
+    description: 支付到签收的总时长
+    domain: 服务
+    table: fact_fulfillment
+    column: total_duration
+    unit: 小时
+    synonyms:
+      - 全链路时长
+      - 到货时长
+    formula: AVG(sign_time - pay_time)
+
+  # 6. 财务干扰组
+  - id: r001_adv1
+    name: 毛利
+    code: gross_profit
+    description: 收入减去直接成本
+    domain: 财务
+    table: fact_finance
+    column: gross_profit
+    unit: 元
+    synonyms:
+      - 毛利润
+      - 赚了多少(毛)
+    formula: revenue - cogs
+
+  - id: r001_adv2
+    name: 净利
+    code: net_profit
+    description: 扣除所有费用后的净利润
+    domain: 财务
+    table: fact_finance
+    column: net_profit
+    unit: 元
+    synonyms:
+      - 净利润
+      - 纯利
+      - 赚了多少(净)
+    formula: gross_profit - expenses
+
+  # === 营销领域指标 (Marketing Metrics) ===
+  
+  - id: mk001
+    name: 广告ROI
+    code: ad_roi
+    description: 广告投入产出比
+    domain: 营销
+    table: fact_marketing
+    column: ad_roi
+    unit: "%"
+    synonyms:
+      - 广告回报率
+      - 广告投资回报
+      - 营销ROI
+    formula: (revenue - ad_cost) / ad_cost * 100
+
+  - id: mk002
+    name: CPC
+    code: cpc
+    description: 单次点击成本(Cost Per Click)
+    domain: 营销
+    table: fact_marketing
+    column: cpc
+    unit: 元
+    synonyms:
+      - 点击成本
+      - 每次点击费用
+    formula: total_ad_cost / total_clicks
+
+  - id: mk003
+    name: CPM
+    code: cpm
+    description: 千次曝光成本(Cost Per Mille)
+    domain: 营销
+    table: fact_marketing
+    column: cpm
+    unit: 元
+    synonyms:
+      - 千次展示成本
+      - 曝光成本
+    formula: total_ad_cost / (impressions / 1000)
+
+  - id: mk004
+    name: CPA
+    code: cpa
+    description: 单次获客成本(Cost Per Acquisition)
+    domain: 营销
+    table: fact_marketing
+    column: cpa
+    unit: 元
+    synonyms:
+      - 获客成本
+      - 用户获取成本
+    formula: total_ad_cost / new_customers
+
+  - id: mk005
+    name: 曝光量
+    code: impressions
+    description: 广告曝光次数
+    domain: 营销
+    table: fact_marketing
+    column: impressions
+    unit: 次
+    synonyms:
+      - 展示量
+      - 广告展示次数
+    formula: COUNT(impressions)
+
+  - id: mk006
+    name: 点击量
+    code: clicks
+    description: 广告点击次数
+    domain: 营销
+    table: fact_marketing
+    column: clicks
+    unit: 次
+    synonyms:
+      - 广告点击
+      - 点击数
+    formula: COUNT(clicks)
+
+  - id: mk007
+    name: 获客成本
+    code: customer_acquisition_cost
+    description: 平均每个新客户的获取成本
+    domain: 营销
+    table: fact_marketing
+    column: cac
+    unit: 元
+    synonyms:
+      - CAC
+      - 拉新成本
+    formula: total_marketing_cost / new_customers
+
+  - id: mk008
+    name: 营销转化率
+    code: marketing_conversion_rate
+    description: 营销活动带来的转化比例
+    domain: 营销
+    table: fact_marketing
+    column: conversion_rate
+    unit: "%"
+    synonyms:
+      - 营销转化
+      - 活动转化率
+    formula: conversions / clicks * 100
+
+  # === 内容领域指标 (Content Metrics) ===
+
+  - id: ct001
+    name: 内容发布量
+    code: content_published
+    description: 每日内容发布数量
+    domain: 内容
+    table: fact_content
+    column: published_count
+    unit: 篇
+    synonyms:
+      - 发布内容数
+      - 内容数量
+    formula: COUNT(content_id)
+
+  - id: ct002
+    name: 内容浏览量
+    code: content_views
+    description: 内容总浏览次数
+    domain: 内容
+    table: fact_content
+    column: total_views
+    unit: 次
+    synonyms:
+      - 阅读量
+      - 观看量
+      - PV
+    formula: SUM(views)
+
+  - id: ct003
+    name: 内容互动率
+    code: content_engagement_rate
+    description: 点赞评论分享的综合互动率
+    domain: 内容
+    table: fact_content
+    column: engagement_rate
+    unit: "%"
+    synonyms:
+      - 互动率
+      - 参与率
+    formula: (likes + comments + shares) / views * 100
+
+  - id: ct004
+    name: 内容完播率
+    code: video_completion_rate
+    description: 视频完整播放的比例
+    domain: 内容
+    table: fact_content
+    column: completion_rate
+    unit: "%"
+    synonyms:
+      - 完播率
+      - 视频完成率
+    formula: completed_views / total_views * 100
+
+  - id: ct005
+    name: 内容分享率
+    code: content_share_rate
+    description: 内容被分享的比例
+    domain: 内容
+    table: fact_content
+    column: share_rate
+    unit: "%"
+    synonyms:
+      - 分享率
+      - 转发率
+    formula: shares / views * 100
+
+  - id: ct006
+    name: 内容收藏率
+    code: content_favorite_rate
+    description: 内容被收藏的比例
+    domain: 内容
+    table: fact_content
+    column: favorite_rate
+    unit: "%"
+    synonyms:
+      - 收藏率
+      - 点赞率
+    formula: favorites / views * 100
+
+  # === 客服领域指标 (Customer Service Metrics) ===
+
+  - id: cs001
+    name: 客服响应时长
+    code: response_time
+    description: 平均首次响应时间
+    domain: 客服
+    table: fact_customer_service
+    column: avg_response_time
+    unit: 秒
+    synonyms:
+      - 响应时间
+      - 首次响应时长
+    formula: AVG(first_response_time)
+
+  - id: cs002
+    name: 客服解决率
+    code: resolution_rate
+    description: 问题一次解决的比例
+    domain: 客服
+    table: fact_customer_service
+    column: resolution_rate
+    unit: "%"
+    synonyms:
+      - 一次解决率
+      - 问题解决率
+    formula: resolved_tickets / total_tickets * 100
+
+  - id: cs003
+    name: 客服满意度
+    code: customer_satisfaction
+    description: 用户满意度评分(1-5分)
+    domain: 客服
+    table: fact_customer_service
+    column: satisfaction_score
+    unit: 分
+    synonyms:
+      - 满意度
+      - CSAT
+    formula: AVG(satisfaction_rating)
+
+  - id: cs004
+    name: 工单量
+    code: ticket_volume
+    description: 客服工单总数
+    domain: 客服
+    table: fact_customer_service
+    column: ticket_count
+    unit: 单
+    synonyms:
+      - 客服单量
+      - 咨询量
+    formula: COUNT(ticket_id)
+
+  - id: cs005
+    name: 退款率
+    code: refund_rate
+    description: 订单退款的比例
+    domain: 客服
+    table: fact_customer_service
+    column: refund_rate
+    unit: "%"
+    synonyms:
+      - 退货率
+      - 退单率
+    formula: refunded_orders / total_orders * 100
+
+  # === 库存领域指标 (Inventory Metrics) ===
+
+  - id: inv001
+    name: 库存周转率
+    code: inventory_turnover
+    description: 库存周转次数
+    domain: 库存
+    table: fact_inventory
+    column: turnover_rate
+    unit: 次
+    synonyms:
+      - 周转率
+      - 库存周转
+    formula: cost_of_goods_sold / avg_inventory
+
+  - id: inv002
+    name: 缺货率
+    code: stockout_rate
+    description: 商品缺货的比例
+    domain: 库存
+    table: fact_inventory
+    column: stockout_rate
+    unit: "%"
+    synonyms:
+      - 断货率
+      - 无货率
+    formula: stockout_items / total_items * 100
+
+  - id: inv003
+    name: 库存成本
+    code: inventory_cost
+    description: 库存持有成本
+    domain: 库存
+    table: fact_inventory
+    column: holding_cost
+    unit: 元
+    synonyms:
+      - 持有成本
+      - 仓储成本
+    formula: SUM(inventory_value * holding_cost_rate)
+
+  - id: inv004
+    name: 滞销率
+    code: slow_moving_rate
+    description: 滞销商品的比例
+    domain: 库存
+    table: fact_inventory
+    column: slow_moving_rate
+    unit: "%"
+    synonyms:
+      - 呆滞率
+      - 慢销率
+    formula: slow_moving_items / total_items * 100
+
+  - id: inv005
+    name: 库存准确率
+    code: inventory_accuracy
+    description: 系统库存与实际库存的一致性
+    domain: 库存
+    table: fact_inventory
+    column: accuracy_rate
+    unit: "%"
+    synonyms:
+      - 库存精准度
+      - 盘点准确率
+    formula: accurate_items / total_items * 100
