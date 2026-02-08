@@ -8,12 +8,18 @@ ChatBI 通过自主研发的 **Metaspace 语义架构**，实现了从自然语�
 
 ## 💎 核心竞争力：确定性语义引擎 (Deterministic Engine)
 
-### 1. 本体语义层 (Ontology Semantic Layer)
+### 1. 多轮语义对话 (Multi-turn Contextual Analysis) 🆕
+- **能力**: 系统支持基于 Session 的上下文深挖。用户在查询某个指标后，可以连续进行维度下钻或过滤（如：“最近7天的GMV” -> “那按地区拆解呢？”）。
+- **演示**:
+![多轮对话演示](docs/media/multi_turn_chat_demo_1770567212612.webp)
+*图：展示了从整体 GMV 查询到按地区分布下钻的完整对话流，系统自动继承了前文的时间范围。*
+
+### 2. 本体语义层 (Ontology Semantic Layer)
 - **实现原理**: 以 `configs/metrics.yaml` 为唯一事实来源 (SSOT)，通过 `MetricLoader` 动态注入全链路。
 - **能力**: 每一个业务指标（如“有效订单量”）都绑定了具体的物理表、列、计算公式及 10 维以上的同义词表。
 - **价值**: 彻底解耦业务逻辑与底层 Schema 变更。
 
-### 2. 三层级联消歧架构 (L1-L3)
+### 3. 三层级联消歧架构 (L1-L3)
 1.  **L1 规则拦截 (Rule Processor)**: 基于词边界与 Trie 树的极速匹配，确保标准术语 100% 准确。
 2.  **L2 语义召回 (Vector Space)**: 结合 Qdrant，处理如 “赚了多少” 到 “毛利” 的模糊叙述匹配。
 3.  **L3 图谱关联 (Knowledge Graph)**: 利用 Neo4j 拓扑路径，根据“领域 (Domain)”上下文解决跨业务线同名歧义。
