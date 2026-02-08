@@ -1182,15 +1182,18 @@
                 addToConversationHistory(query, data);
 
                 // 显示所有模块
+                displayIntentFlowModule(data);
                 displayVectorModule(data);
                 displayGraphModule(data);
+                displayFusionModule(data);
+                displayRankingModule(data);
                 displayLLMModule(data);
                 displayMQLModule(data);
                 displayDataModule(data);
                 displayResultModule(data);
 
             } catch (error) {
-                const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content'];
+                const contentIds = ['vector-content', 'graph-content', 'llm-content', 'mql-content', 'data-content', 'result-content', 'intent-flow-content', 'fusion-content', 'ranking-content'];
                 contentIds.forEach(id => {
                     const el = document.getElementById(id);
                     if (el) {
