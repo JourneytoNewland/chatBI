@@ -10,9 +10,13 @@ ChatBI 通过自主研发的 **Metaspace 语义架构**，实现了从自然语�
 
 ### 1. 多轮语义对话 (Multi-turn Contextual Analysis) 🆕
 - **能力**: 系统支持基于 Session 的上下文深挖。用户在查询某个指标后，可以连续进行维度下钻或过滤（如：“最近7天的GMV” -> “那按地区拆解呢？”）。
-- **演示**:
-![多轮对话演示](docs/media/multi_turn_chat_demo_1770567212612.webp)
-*图：展示了从整体 GMV 查询到按地区分布下钻的完整对话流，系统自动继承了前文的时间范围。*
+- **流程演示**:
+![多轮对话录屏演示](docs/media/final_chatbi_demo_v2_recording_1770567641321.webp)
+*图：实测录屏演示。展示了从整体趋势查询到自动继承上下文进行地区拆解的完整闭环。*
+
+- **结果看板**:
+![多轮对话结果截图](docs/media/final_multiturn_screenshot_verified_1770567769941.png)
+*图：多轮对话后的可视化结果。可以看到系统在保留 GMV 指标和时间范围的基础上，成功执行了按 Regions 的聚合拆解。*
 
 ### 2. 本体语义层 (Ontology Semantic Layer)
 - **实现原理**: 以 `configs/metrics.yaml` 为唯一事实来源 (SSOT)，通过 `MetricLoader` 动态注入全链路。
