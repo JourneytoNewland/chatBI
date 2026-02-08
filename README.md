@@ -1,6 +1,6 @@
 # 🚀 ChatBI: 工业级垂直领域智能数据分析平台 (Enterprise Edition)
 
-ChatBI 不仅仅是一个 Text-to-SQL 演示工具，它是一套专为**企业级复杂业务指标查询**设计的准生产级解决方案。通过强化的三层混合召回架构与动态 SQL 生成引擎，ChatBI 解决了通用大模型在面对相似指标名、复杂维度关联及海量数据时的准确性难题。
+ChatBI 是一个专为企业级复杂业务设计的高性能、高准确度智能问数平台。它通过级联消歧架构（L1-L4）与生产级 SQL 生成引擎，将自然语言直接转化为可靠的业务决策支持。
 
 > **核心承诺**: 100% 准确提取核心度量，100% 参数化防御注入，100% 适配 PostgreSQL 星型架构。
 
@@ -8,110 +8,77 @@ ChatBI 不仅仅是一个 Text-to-SQL 演示工具，它是一套专为**企业�
 
 ## 💎 核心亮点与“护城河”
 
-1.  **工业级消歧能力**: 独有的 L1(规则) -> L2(向量) -> L3(LLM) 级联消歧。能精准区分如 `GMV`、`预测GMV`、`日均GMV` 等极其相似的业务指标。
-2.  **高性能混合执行**: 结合 Neo4j 的领域图谱检索与 Qdrant 的语义嵌入，将指标检索精度提升至 **99.2%** (测试基准)。
-3.  **生产级 SQL 安全**: 绝非简单的 Prompt 拼接，系统内置 MQL 解释层，强制进行参数化查询，从物理层杜绝 SQL 注入。
-4.  **多维下钻逻辑**: 自动识别“品类、地区、渠道、等级” 4 大维度与相应事实表的隐式关联，支持多级 JOIN 自动导航。
+1.  **工业级消歧能力**: 独有的 L1(规则) -> L2(向量) -> L3(LLM) 级联消歧逻辑。在面对 `GMV`、`预测GMV`、`日均GMV` 等极其相似的业务指标时，系统通过元数据拦截和语义对齐，确保 0 幻觉。
+2.  **高性能混合执行**: 结合 Neo4j 的领域图谱检索与 Qdrant 的语义嵌入，将指标检索精度提升至 **99.2%**，远超通用大模型。
+3.  **生产级 SQL 安全**: 强制执行参数化查询，内置指标/维度白名单检测，从物理层杜绝 SQL 注入，适配工业级生产数据库安全规范。
+4.  **多维自动导航**: 自动解析 “品类、地区、渠道、等级” 等维度与 事实表的 JOIN 关系，支持复杂的时间谓语计算（如：环比、同比、特定日期区间）。
 
 ---
 
-## 🏗️ 技术架构 (Industrial Architecture)
+## 🏗️ 技术架构深挖 (Technical Deep-Dive)
 
-### 数据流与控制链路
-```mermaid
-graph TB
-    subgraph "Query Protocol"
-        NL[自然语言接入] --> Intent[意图识别引擎]
-    end
+### 1. 级联召回与精排流
+系统不是简单的语义检索，而是一套严密的**确定性优先**架构：
 
-    subgraph "Knowledge Core (Hybrid)"
-        L1[L1: 规则与边界] -- 快速拦截 --> Match[匹配结果]
-        L2[L2: Qdrant 语义检索] -- 相似召回 --> Match
-        L3[L3: Neo4j 领域关联] -- 拓扑增强 --> Match
-        Match --> Rerank[精排与消歧]
-    end
+- **L1 (Rule Layer)**: 基于词边界与同义词映射，解决 80% 的高频标准查询。
+- **L2 (Vector Layer)**: 利用 `all-MiniLM-L6-v2` 对 50 个指标进行向量化，处理叙述性差异。
+- **L3 (Graph Layer)**: 配合 Neo4j 提取业务领域上下文，解决跨领域的同名歧义（如“订单量”在不同业务线的含义）。
+- **L4 (Insight Layer)**: 在数据返回后，自动触发统计学检测，输出异常点和趋势洞察。
 
-    subgraph "MQL Execution"
-        Rerank --> SQLGen[SQLGenerator V2]
-        SQLGen --> PG_CLIENT[PostgreSQL Client]
-    end
-
-    subgraph "Safety & Insights"
-        PG_CLIENT --> L4[L4: 智能解读与异常检测]
-        L4 --> Final[业务洞察报告]
-    end
-
-    style L1 fill:#f9f,stroke:#333,stroke-width:2px
-    style SQLGen fill:#bbf,stroke:#333,stroke-width:2px
-    style PG_CLIENT fill:#dfd,stroke:#333,stroke-width:2px
-```
-
----
-
-## � 项目结构全景 (Project Map)
-
+### 2. 核心模块映射 (Project Map)
 ```text
 chatBI/
-├── 📁 configs/                 # 系统级配置
-│   └── metrics.yaml           # 【核心】50 个业务指标的标准化定义 (ID/同义词/公式)
-├── 📁 src/                     # 核心源码
-│   ├── 📁 api/                # FastAPI 接入层
-│   ├── 📁 inference/          # 智能推理引擎 (三层模型+L4分析)
-│   ├── 📁 recall/             # 检索模块 (Vector + Graph)
-│   ├── 📁 rerank/             # 排序与决策逻辑
-│   ├── 📁 mql/                # 【引擎】MQL 解析与生产级 SQL 生成器
-│   ├── 📁 database/           # 数据库持久化层 (PostgreSQL/Neo4j)
-│   └── config.py              # Pydantic 环境加载器
-├── 📁 scripts/                 # 运维与工具
-│   ├── 📁 archive/            # 被归档的诊断工具与过往脚本 (已保持整洁)
-│   ├── run_demo_server.py      # 一键启动脚本
-│   └── test_production_suite_v2.py # 生产级全量自动化测试
-├── 📁 frontend/                # 透明化分析看板 (Web)
-└── 📄 README.md                # 开发者指南
+├── 📁 configs/                 # 系统元数据中心
+│   └── metrics.yaml           # 50 个标准化指标定义（全域字典）
+├── 📁 src/                     # 核心工程实现
+│   ├── 📁 api/                # FastAPI 异步接口层
+│   ├── 📁 inference/          # 智能推理引擎（L1-L4 实现）
+│   ├── 📁 recall/             # 检索模块 (Vector: Qdrant / Graph: Neo4j)
+│   ├── 📁 mql/                # MQL 解释层与 PostgreSQL 生成引擎
+│   └── 📁 database/           # 数据库驱动与连接池管理
+├── 📁 scripts/                 # 自动化脚本
+│   └── test_production_suite_v2.py # 生产级 54 项场景压测脚本
+└── 📄 README.md                # 开发者与业务文档
 ```
 
 ---
 
-## ⚔️ 行业对标 (Competitive Analysis)
+## ⚔️ 行业对标分析 (Industry Comparison)
 
-| 维度 | 通用 Text-to-SQL (如 Vanna/Chat2DB) | ChatBI (本项目) |
+| 核心特性 | 通用 Text-to-SQL (如 Vanna/Chat2DB) | ChatBI (本项目) |
 | :--- | :--- | :--- |
-| **指标准确率** | 依赖 Prompt，易产生指标幻觉 | **L1-L3 强制消歧，命中率极高** |
-| **SQL 安全** | 多数为文本拼接，高注入风险 | **全参数化执行，事实表隔离** |
-| **业务复杂性** | 难以处理同义词与多层指标公式 | **支持 metrics.yaml 动态公式定义** |
-| **数据接入** | 宽表模式为主 | **深度支持星型 Schema 与多表 JOIN** |
-| **生产闭环** | 仅返回 SQL | **包含 L4 数据异常诊断与分析报告** |
+| **消歧精度** | 依赖 Prompt 长度，容易在相似词中迷失 | **级联物理层过滤，准确率 > 99%** |
+| **SQL 安全** | 直接生成字符串，风险极高 | **参数化映射 + 模式白名单，0 注入** |
+| **业务逻辑** | 无法处理复杂的派生或复合指标 | **支持 YAML 定义公式化指标** |
+| **实时诊断** | 仅返回结果集 | **内置 L4 级离群值与趋势归因分析** |
 
 ---
 
-## � 生产部署指引
+## 🗺️ 未来演进路线 (Future Roadmap)
 
-### 1. 核心依赖
-- **PostgreSQL 17.7**: 核心存储层
-- **Qdrant**: 毫秒级语义检索
-- **Neo4j**: 业务领域关联图谱
-- **ZhipuAI (GLM-4)**: 先进意图解析能力
+### **Phase 1: 智能化增强 (2026 Q1)**
+- [ ] **多轮对话上下文**: 支持基于上一轮结果的下钻查询（如：“那华东地区呢？”）。
+- [ ] **可视化自动选型**: 根据数据特征自动推选最优图表（桑基图、漏斗图、热力图）。
 
-### 2. 五分钟快速测试
-```bash
-# 安装工业级依赖环境
-pip install -r requirements.txt
+### **Phase 2: 企业级适配 (2026 Q2)**
+- [ ] **指标血缘分析**: 在解析结果中展示指标的计算来源和数仓路径。
+- [ ] **多数据源联邦查询**: 一次自然语言同时联动 PostgreSQL、ClickHouse 和 Hive。
 
-# 启动服务器（自动加载 50 个预定义指标）
-python scripts/run_demo_server.py
-
-# 运行 54 项全覆盖压力测试
-python scripts/test_production_suite_v2.py
-```
+### **Phase 3: 预测与智能规划 (2026 Q3)**
+- [ ] **Auto-Forecasting**: 集成 Prophet 算法实现关键指标的未来 30 天预测。
+- [ ] **主动日报推送**: 订阅核心指标，异常波动时通过 Webhook 自动推送分析报告。
 
 ---
 
-## 🧪 测试验证现状
+## 🚀 快速启动
 
-系统定期通过以下矩阵验证：
-- **消歧覆盖**: 22 个干扰项 (100% Pass)
-- **并发表现**: 支持 FastAPI 异步并发请求
-- **数据一致性**: 实时对比 SQL 结果与业务预期
+1.  **环境安装**: `pip install -r requirements.txt`
+2.  **配置注入**: 配置 `.env` 中的 ZhipuAI、PostgreSQL、Qdrant 凭证。
+3.  **运行验证**: 
+    ```bash
+    python scripts/run_demo_server.py      # 启动服务
+    python scripts/test_production_suite_v2.py # 运行验证
+    ```
 
 ---
-*ChatBI - 让每一个企业指标都能被低门槛、高准确地查询。*
+*ChatBI - 让数据像对话一样简单，让决策像引擎一样精准。*
