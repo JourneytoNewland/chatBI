@@ -1,5 +1,6 @@
 """增强版三层混合意图识别架构（集成智谱AI）."""
 
+import asyncio
 import os
 import time
 from dataclasses import dataclass, field
@@ -10,6 +11,12 @@ from .intent import IntentRecognizer, QueryIntent, TimeGranularity, AggregationT
 from .llm_intent import LLMIntentRecognizer, LocalLLMIntentRecognizer
 from .zhipu_intent import ZhipuIntentRecognizer
 from ..recall.semantic_recall import SemanticRecall, FallbackSemanticRecall
+from ..recall.dual_recall import DualRecall
+from ..recall.vector.qdrant_store import QdrantVectorStore
+from ..recall.vector.vectorizer import MetricVectorizer
+from ..recall.graph.neo4j_client import Neo4jClient
+from ..rerank.ranker import RuleBasedRanker
+from ..rerank.models import Candidate, QueryContext
 
 
 @dataclass
@@ -54,6 +61,8 @@ class EnhancedHybridIntentRecognizer:
         self,
         llm_provider: str = "zhipu",  # zhipu/openai/local
         enable_semantic: bool = True,
+        enable_dual_recall: bool = True,  # 新增：是否启用双路召回
+        enable_rerank: bool = True,  # 新增：是否启用精排
         confidence_thresholds: dict[str, float] = None
     ):
         """初始化混合识别器.
@@ -61,12 +70,14 @@ class EnhancedHybridIntentRecognizer:
         Args:
             llm_provider: LLM提供商 (zhipu/openai/local)
             enable_semantic: 是否启用语义向量检索
+            enable_dual_recall: 是否启用双路召回（向量+图谱）
+            enable_rerank: 是否启用11维特征精排
             confidence_thresholds: 各层置信度阈值
         """
         # L1: 规则识别器
         self.rule_recognizer = IntentRecognizer()
 
-        # L2: 语义召回
+        # L2: 语义召回（保留向后兼容）
         self.enable_semantic = enable_semantic
         if enable_semantic:
             try:
@@ -76,6 +87,31 @@ class EnhancedHybridIntentRecognizer:
                 self.semantic_recall = FallbackSemanticRecall()
         else:
             self.semantic_recall = FallbackSemanticRecall()
+
+        # L2增强: 双路召回融合
+        self.enable_dual_recall = enable_dual_recall
+        self.dual_recall = None
+        if enable_dual_recall:
+            try:
+                vectorizer = MetricVectorizer()
+                vector_store = QdrantVectorStore()
+                neo4j_client = Neo4jClient()
+                self.dual_recall = DualRecall(vectorizer, vector_store, neo4j_client)
+                print("✅ 双路召回初始化成功")
+            except Exception as e:
+                print(f"⚠️  双路召回初始化失败: {e}，使用单一语义召回")
+                self.dual_recall = None
+
+        # L2增强: 融合精排
+        self.enable_rerank = enable_rerank
+        self.ranker = None
+        if enable_rerank:
+            try:
+                self.ranker = RuleBasedRanker()
+                print("✅ 融合精排器初始化成功")
+            except Exception as e:
+                print(f"⚠️  融合精排器初始化失败: {e}")
+                self.ranker = None
 
         # L3: LLM识别器
         self.llm_provider = llm_provider
@@ -227,11 +263,15 @@ class EnhancedHybridIntentRecognizer:
             )
 
     def _layer2_semantic_match(self, query: str, top_k: int) -> LayerResult:
-        """L2层：语义向量匹配."""
+        """L2层：语义向量匹配（增强版：双路召回 + 融合精排）."""
         start = time.time()
 
         try:
-            # 语义召回
+            # 如果启用了双路召回，使用 DualRecall
+            if self.dual_recall is not None:
+                return self._dual_recall_with_rerank(query, top_k, start)
+
+            # 否则使用原有的单一语义召回（向后兼容）
             recall_result = self.semantic_recall.recall(query, top_k=top_k)
 
             if not recall_result:
@@ -254,6 +294,7 @@ class EnhancedHybridIntentRecognizer:
                 duration=time.time() - start,
                 metadata={
                     "method": recall_result.search_method,
+                    "recall_type": "semantic_only",  # 标识为单一语义召回
                     "candidates_found": recall_result.total,
                     "top_score": recall_result.candidates[0].score if recall_result.candidates else 0,
                     "embedding_dim": recall_result.embedding_dim,
@@ -277,6 +318,228 @@ class EnhancedHybridIntentRecognizer:
                 duration=time.time() - start,
                 metadata={"error": str(e)}
             )
+
+    def _dual_recall_with_rerank(self, query: str, top_k: int, start_time: float) -> LayerResult:
+        """使用双路召回和融合精排的L2层实现.
+
+        Args:
+            query: 查询文本
+            top_k: 返回数量
+            start_time: 开始时间（用于计算耗时）
+
+        Returns:
+            LayerResult 包含详细的召回和精排信息
+        """
+        try:
+            # Step 1: 双路召回（异步执行）
+            use_new_loop = False
+
+            try:
+                # 尝试获取现有事件循环
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    # 如果循环正在运行，创建新循环
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    use_new_loop = True
+            except RuntimeError:
+                # 没有事件循环，创建新的
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                use_new_loop = True
+
+            recall_results = loop.run_until_complete(
+                self.dual_recall.dual_recall(
+                    query=query,
+                    vector_top_k=50,
+                    graph_top_k=30,
+                    final_top_k=top_k * 2,  # 先召回更多，供精排使用
+                    timeout=1.0
+                )
+            )
+
+            if use_new_loop:
+                loop.close()
+
+            if not recall_results:
+                raise Exception("双路召回未返回结果")
+
+            # Step 2: 转换为 Candidate 对象（用于精排）
+            candidates = []
+            for result in recall_results:
+                candidate = Candidate(
+                    metric_id=result.metric_id,
+                    name=result.name,
+                    code=result.code,
+                    description=result.description,
+                    domain=result.domain,
+                    synonyms=[],  # 可以后续填充
+                    importance=0.5,  # 默认重要性
+                    formula=None,
+                    vector_score=result.vector_score or 0.0,
+                    graph_score=result.graph_score or 0.0,
+                    source=result.source
+                )
+                candidates.append(candidate)
+
+            # Step 3: 融合精排
+            query_context = QueryContext.from_text(query)
+            reranked_results = []
+
+            if self.ranker is not None:
+                # 使用精排器
+                reranked_results = self.ranker.rerank(candidates, query_context, top_k=top_k)
+            else:
+                # 降级：按原始分数排序
+                reranked_results = [
+                    (c, c.vector_score, {})
+                    for c in sorted(candidates, key=lambda x: x.vector_score, reverse=True)
+                ][:top_k]
+
+            # Step 4: 提取最终意图（使用排名第一的结果）
+            top_candidate = reranked_results[0][0] if reranked_results else candidates[0]
+
+            # 使用规则识别器从候选指标中提取完整意图
+            intent = self.rule_recognizer.recognize(query)
+
+            # Step 5: 计算置信度（基于精排后的分数）
+            top_score = reranked_results[0][1] if reranked_results else 0.0
+            confidence = max(0.75, min(0.95, top_score))
+
+            # Step 6: 构建详细的元数据
+            metadata = {
+                "method": "dual_recall_with_rerank",
+                "recall_type": "dual_recall",  # 标识为双路召回
+                "vector_top_k": 50,
+                "graph_top_k": 30,
+                "final_top_k": top_k,
+                "candidates_found": len(recall_results),
+                "reranked": self.ranker is not None,
+                "fusion_stats": self._calculate_fusion_stats(recall_results),
+            }
+
+            # 添加召回来源统计
+            source_counts = {"vector": 0, "graph": 0, "both": 0}
+            for r in recall_results:
+                source_counts[r.source] = source_counts.get(r.source, 0) + 1
+            metadata["source_distribution"] = source_counts
+
+            # 添加 Top-3 候选的详细信息
+            metadata["candidates"] = []
+            for i, (candidate, score, details) in enumerate(reranked_results[:3]):
+                candidate_info = {
+                    "rank": i + 1,
+                    "name": candidate.name,
+                    "code": candidate.code,
+                    "domain": candidate.domain,
+                    "final_score": score,
+                    "vector_score": candidate.vector_score,
+                    "graph_score": candidate.graph_score,
+                    "source": candidate.source,
+                }
+
+                # 如果有精排详情，添加特征分数
+                if details:
+                    candidate_info["feature_scores"] = details
+
+                metadata["candidates"].append(candidate_info)
+
+            # 如果启用了精排，添加特征权重信息
+            if self.ranker is not None:
+                metadata["feature_weights"] = self.ranker.weights
+
+            return LayerResult(
+                layer_name="L2_Semantic_Enhanced",
+                success=True,
+                intent=intent,
+                confidence=confidence,
+                duration=time.time() - start_time,
+                metadata=metadata
+            )
+
+        except Exception as e:
+            import traceback
+            error_details = str(e)
+            error_traceback = traceback.format_exc()
+
+            print(f"❌ 双路召回+精排失败: {error_details}")
+            print(f"Traceback: {error_traceback}")
+
+            # 降级到单一语义召回
+            print("⚠️  降级到单一语义召回")
+            return self._layer2_semantic_match_fallback(query, top_k, start_time)
+
+    def _layer2_semantic_match_fallback(self, query: str, top_k: int, start_time: float) -> LayerResult:
+        """降级方案：使用单一语义召回."""
+        try:
+            recall_result = self.semantic_recall.recall(query, top_k=top_k)
+
+            if not recall_result:
+                raise Exception("语义召回降级也失败")
+
+            intent = self.rule_recognizer.recognize(query)
+
+            confidence = 0.75  # 降级后置信度降低
+            if recall_result.total > 0:
+                top_score = recall_result.candidates[0].score
+                confidence = max(confidence, top_score * 0.9)
+
+            return LayerResult(
+                layer_name="L2_Semantic_Fallback",
+                success=True,
+                intent=intent,
+                confidence=confidence,
+                duration=time.time() - start_time,
+                metadata={
+                    "method": recall_result.search_method,
+                    "recall_type": "semantic_fallback",  # 标识为降级方案
+                    "fallback_reason": "dual_recall_failed",
+                    "candidates_found": recall_result.total,
+                    "top_score": recall_result.candidates[0].score if recall_result.candidates else 0,
+                    "candidates": [
+                        {
+                            "name": c.name,
+                            "score": c.score,
+                            "reason": c.match_reason
+                        }
+                        for c in recall_result.candidates[:3]
+                    ]
+                }
+            )
+        except Exception as e:
+            return LayerResult(
+                layer_name="L2_Semantic",
+                success=False,
+                intent=None,
+                confidence=0.0,
+                duration=time.time() - start_time,
+                metadata={"error": str(e), "fallback_failed": True}
+            )
+
+    def _calculate_fusion_stats(self, recall_results: list) -> dict:
+        """计算召回融合的统计信息.
+
+        Args:
+            recall_results: 召回结果列表
+
+        Returns:
+            统计信息字典
+        """
+        if not recall_results:
+            return {}
+
+        vector_scores = [r.vector_score for r in recall_results if r.vector_score is not None]
+        graph_scores = [r.graph_score for r in recall_results if r.graph_score is not None]
+
+        stats = {
+            "total_candidates": len(recall_results),
+            "vector_avg_score": sum(vector_scores) / len(vector_scores) if vector_scores else 0,
+            "graph_avg_score": sum(graph_scores) / len(graph_scores) if graph_scores else 0,
+            "vector_max_score": max(vector_scores) if vector_scores else 0,
+            "graph_max_score": max(graph_scores) if graph_scores else 0,
+        }
+
+        return stats
 
     def _layer3_llm_inference(self, query: str, candidates: list = None) -> LayerResult:
         """L3层：LLM深度推理.
