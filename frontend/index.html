@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -329,11 +330,26 @@
             margin: 10px 0;
         }
 
-        .code-block .keyword { color: #f687b3; }
-        .code-block .string { color: #68d391; }
-        .code-block .comment { color: #a0aec0; font-style: italic; }
-        .code-block .function { color: #4299e1; }
-        .code-block .number { color: #f6ad55; }
+        .code-block .keyword {
+            color: #f687b3;
+        }
+
+        .code-block .string {
+            color: #68d391;
+        }
+
+        .code-block .comment {
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        .code-block .function {
+            color: #4299e1;
+        }
+
+        .code-block .number {
+            color: #f6ad55;
+        }
 
         .data-grid {
             display: grid;
@@ -438,6 +454,9 @@
             border-radius: 12px;
             padding: 20px;
             margin: 20px 0;
+            min-height: 400px;
+            width: 100%;
+            position: relative;
         }
 
         .loading {
@@ -456,8 +475,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         .badge {
@@ -469,11 +493,30 @@
             margin-left: 8px;
         }
 
-        .badge-success { background: #d1fae5; color: #065f46; }
-        .badge-processing { background: #fef3c7; color: #92400e; }
-        .badge-vector { background: #e9d5ff; color: #5b21b6; }
-        .badge-graph { background: #fed7e2; color: #9f1239; }
-        .badge-llm { background: #fce7f3; color: #9f1239; }
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-processing {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-vector {
+            background: #e9d5ff;
+            color: #5b21b6;
+        }
+
+        .badge-graph {
+            background: #fed7e2;
+            color: #9f1239;
+        }
+
+        .badge-llm {
+            background: #fce7f3;
+            color: #9f1239;
+        }
 
         /* 多轮对话引导 */
         .conversation-guide {
@@ -667,6 +710,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <!-- 左侧会话历史边栏 -->
@@ -696,7 +740,8 @@
             <div class="conversation-detail-content">
                 <div class="conversation-detail-header">
                     <div class="conversation-detail-title">💬 对话详情</div>
-                    <button type="button" class="conversation-detail-close" onclick="closeConversationDetail()">✕</button>
+                    <button type="button" class="conversation-detail-close"
+                        onclick="closeConversationDetail()">✕</button>
                 </div>
                 <div id="conversationDetailBody">
                     <!-- 详情内容将在这里动态加载 -->
@@ -707,211 +752,244 @@
         <!-- 主内容区域 -->
         <div class="main-content">
             <div class="header">
-            <h1>🚀 智能问数系统 - 完整模块透明化</h1>
-            <p class="header-description">
-                展示向量检索、图谱召回、大语言模型等每个模块的内部运作过程
-            </p>
-            <div class="header-badge">
-                ✨ 完全透明 - 可验证 - 非空壳
-            </div>
-        </div>
-
-        <!-- 模块切换标签 -->
-        <div class="module-tabs">
-            <div class="module-tab active" onclick="switchModule('intent-flow', event)">
-                <div class="module-tab-icon">🎯</div>
-                <div class="module-tab-name">意图识别流程</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('vector', event)">
-                <div class="module-tab-icon">🧠</div>
-                <div class="module-tab-name">向量检索模块</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('graph', event)">
-                <div class="module-tab-icon">🕸️</div>
-                <div class="module-tab-name">图谱召回模块</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('fusion', event)">
-                <div class="module-tab-icon">🔀</div>
-                <div class="module-tab-name">双路召回融合</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('ranking', event)">
-                <div class="module-tab-icon">⚖️</div>
-                <div class="module-tab-name">融合精排详情</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('root-cause', event)">
-                <div class="module-tab-icon">🔍</div>
-                <div class="module-tab-name">根因分析</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('llm', event)">
-                <div class="module-tab-icon">🤖</div>
-                <div class="module-tab-name">大语言模型模块</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('mql', event)">
-                <div class="module-tab-icon">📝</div>
-                <div class="module-tab-name">MQL/SQL生成</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('data', event)">
-                <div class="module-tab-icon">🗄️</div>
-                <div class="module-tab-name">数据查询</div>
-            </div>
-            <div class="module-tab" onclick="switchModule('result', event)">
-                <div class="module-tab-icon">📊</div>
-                <div class="module-tab-name">结果展示</div>
-            </div>
-        </div>
-
-        <!-- 搜索框 -->
-        <div class="search-box">
-            <div class="search-input-wrapper">
-                <input type="text" class="search-input" id="queryInput"
-                       placeholder="请输入自然语言查询，例如：最近7天的GMV"
-                       value="最近7天的GMV">
-                <button type="button" class="search-button" onclick="executeQuery()">
-                    🔍 开始智能分析
-                </button>
-            </div>
-
-            <!-- 多轮对话引导 -->
-            <div class="conversation-guide" id="conversationGuide">
-                <div class="conversation-guide-header">
-                    <span class="conversation-guide-icon">💬</span>
-                    <span class="conversation-guide-title">多轮对话功能</span>
-                    <span class="conversation-guide-badge">已启用</span>
-                </div>
-                <p class="conversation-guide-text">
-                    系统会记住您的对话上下文，您可以：
+                <h1>🚀 智能问数系统 - 完整模块透明化</h1>
+                <p class="header-description">
+                    展示向量检索、图谱召回、大语言模型等每个模块的内部运作过程
                 </p>
-                <div class="followup-examples">
-                    <div class="followup-example" onclick="setQueryAndExecute('按地区看看')">
-                        <span class="followup-example-icon">🌍</span>
-                        <span>按地区看看</span>
+                <div class="header-badge">
+                    ✨ 完全透明 - 可验证 - 非空壳
+                </div>
+            </div>
+
+            <!-- 模块切换标签 -->
+            <div class="module-tabs">
+                <div class="module-tab active" onclick="switchModule('intent-flow', event)">
+                    <div class="module-tab-icon">🎯</div>
+                    <div class="module-tab-name">意图识别流程</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('vector', event)">
+                    <div class="module-tab-icon">🧠</div>
+                    <div class="module-tab-name">向量检索模块</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('graph', event)">
+                    <div class="module-tab-icon">🕸️</div>
+                    <div class="module-tab-name">图谱召回模块</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('fusion', event)">
+                    <div class="module-tab-icon">🔀</div>
+                    <div class="module-tab-name">双路召回融合</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('ranking', event)">
+                    <div class="module-tab-icon">⚖️</div>
+                    <div class="module-tab-name">融合精排详情</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('root-cause', event)">
+                    <div class="module-tab-icon">🔍</div>
+                    <div class="module-tab-name">根因分析</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('llm', event)">
+                    <div class="module-tab-icon">🤖</div>
+                    <div class="module-tab-name">大语言模型模块</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('mql', event)">
+                    <div class="module-tab-icon">📝</div>
+                    <div class="module-tab-name">MQL/SQL生成</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('data', event)">
+                    <div class="module-tab-icon">🗄️</div>
+                    <div class="module-tab-name">数据查询</div>
+                </div>
+                <div class="module-tab" onclick="switchModule('result', event)">
+                    <div class="module-tab-icon">📊</div>
+                    <div class="module-tab-name">结果展示</div>
+                </div>
+            </div>
+
+            <!-- 搜索框 -->
+            <div class="search-box">
+                <div class="search-input-wrapper">
+                    <input type="text" class="search-input" id="queryInput" placeholder="请输入自然语言查询，例如：最近7天的GMV"
+                        value="最近7天的GMV">
+                    <button type="button" class="search-button" onclick="executeQuery()">
+                        🔍 开始智能分析
+                    </button>
+                </div>
+
+                <!-- 多轮对话引导 -->
+                <div class="conversation-guide" id="conversationGuide">
+                    <div class="conversation-guide-header">
+                        <span class="conversation-guide-icon">💬</span>
+                        <span class="conversation-guide-title">多轮对话功能</span>
+                        <span class="conversation-guide-badge">已启用</span>
                     </div>
-                    <div class="followup-example" onclick="setQueryAndExecute('只看华东和华南')">
-                        <span class="followup-example-icon">🎯</span>
-                        <span>只看华东和华南</span>
+                    <p class="conversation-guide-text">
+                        系统会记住您的对话上下文，您可以：
+                    </p>
+                    <div class="followup-examples">
+                        <div class="followup-example" onclick="setQueryAndExecute('按地区看看')">
+                            <span class="followup-example-icon">🌍</span>
+                            <span>按地区看看</span>
+                        </div>
+                        <div class="followup-example" onclick="setQueryAndExecute('只看华东和华南')">
+                            <span class="followup-example-icon">🎯</span>
+                            <span>只看华东和华南</span>
+                        </div>
+                        <div class="followup-example" onclick="setQueryAndExecute('对比去年同期')">
+                            <span class="followup-example-icon">📊</span>
+                            <span>对比去年同期</span>
+                        </div>
+                        <div class="followup-example" onclick="setQueryAndExecute('用图表展示')">
+                            <span class="followup-example-icon">📈</span>
+                            <span>用图表展示</span>
+                        </div>
                     </div>
-                    <div class="followup-example" onclick="setQueryAndExecute('对比去年同期')">
-                        <span class="followup-example-icon">📊</span>
-                        <span>对比去年同期</span>
+                </div>
+
+                <div class="examples">
+                    <div style="font-size: 12px; color: #718096; margin-bottom: 8px; font-weight: 600;">
+                        📝 示例查询：
                     </div>
-                    <div class="followup-example" onclick="setQueryAndExecute('用图表展示')">
-                        <span class="followup-example-icon">📈</span>
-                        <span>用图表展示</span>
+                    <div class="example-chip" onclick="setQueryAndExecute('最近7天的GMV')">
+                        💰 最近7天的GMV
+                    </div>
+                    <div class="example-chip" onclick="setQueryAndExecute('2023年用户增长趋势')">
+                        📈 2023年用户增长趋势
+                    </div>
+                    <div class="example-chip" onclick="setQueryAndExecute('客单价排名前5的城市')">
+                        🏙️ 客单价Top5城市
+                    </div>
+                    <div class="example-chip" onclick="setQueryAndExecute('why GMV dropped last week')">
+                        📉 GMV下降归因
+                    </div>
+                    <!-- New Test Cases -->
+                    <div class="example-chip" onclick="setQueryAndExecute('按城市拆解')">
+                        🗺️ 按城市拆解 (Drill-down)
+                    </div>
+                    <div class="example-chip" onclick="setQueryAndExecute('当前库存')">
+                        📦 当前库存 (Real-time)
+                    </div>
+                    <div class="example-chip" onclick="setQueryAndExecute('预测未来7天GMV')">
+                        🔮 预测未来7天GMV (Prophet)
+                    </div>
+
+                    <!-- 根因分析示例 -->
+                    <div style="width: 100%; height: 1px; background: #e2e8f0; margin: 12px 0;"></div>
+                    <div style="font-size: 12px; color: #ed8936; margin-bottom: 8px; font-weight: 600;">
+                        🔍 根因分析：
+                    </div>
+                    <div class="example-chip" onclick="setQuery('为什么GMV最近下降了？')"
+                        style="background: linear-gradient(135deg, #667eea 0%, #ed8936 100%); color: white;">
+                        为什么GMV最近下降了？</div>
+                    <div class="example-chip" onclick="setQuery('分析DAU下降的原因')"
+                        style="background: linear-gradient(135deg, #667eea 0%, #ed8936 100%); color: white;">分析DAU下降的原因
+                    </div>
+                    <div class="example-chip" onclick="setQuery('转化率怎么了')"
+                        style="background: linear-gradient(135deg, #667eea 0%, #ed8936 100%); color: white;">转化率怎么了
+                    </div>
+                    <div class="example-chip" onclick="setQuery(' diagnose 用户流失问题')"
+                        style="background: linear-gradient(135deg, #667eea 0%, #ed8936 100%); color: white;">诊断用户流失问题
                     </div>
                 </div>
             </div>
 
-            <div class="examples">
-                <div style="font-size: 12px; color: #718096; margin-bottom: 8px; font-weight: 600;">
-                    📝 示例查询：
+            <!-- 意图识别流程 -->
+            <div id="intent-flow-module" class="module-content active">
+                <h2 style="color: #667eea; margin-bottom: 20px;">🎯 三层意图识别流程</h2>
+                <div id="intent-flow-content">
+                    <p style="color: #718096;">请先执行查询以查看意图识别详细流程...</p>
                 </div>
-                <div class="example-chip" onclick="setQuery('最近7天的GMV')">最近7天的GMV</div>
-                <div class="example-chip" onclick="setQuery('本月按渠道统计DAU')">本月按渠道统计DAU</div>
-                <div class="example-chip" onclick="setQuery('按地区统计GMV')">按地区统计GMV</div>
-                <div class="example-chip" onclick="setQuery('2024年1月的营收环比')">2024年1月的营收环比</div>
-                <div class="example-chip" onclick="setQuery('销售趋势')">销售趋势</div>
-                <div class="example-chip" onclick="setQuery('用户增长情况')">用户增长情况</div>
-                <div class="example-chip" onclick="setQuery('各地区的转化率对比')">各地区的转化率对比</div>
-                <div class="example-chip" onclick="setQuery('客单价变化趋势')">客单价变化趋势</div>
+            </div>
 
-                <!-- 根因分析示例 -->
-                <div style="width: 100%; height: 1px; background: #e2e8f0; margin: 12px 0;"></div>
-                <div style="font-size: 12px; color: #ed8936; margin-bottom: 8px; font-weight: 600;">
-                    🔍 根因分析：
+            <!-- 向量检索模块 -->
+            <div id="vector-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">🧠 向量检索模块详细过程</h2>
+                <div id="vector-content">
+                    <p style="color: #718096;">请先执行查询以查看向量检索的详细过程...</p>
                 </div>
-                <div class="example-chip" onclick="setQuery('为什么GMV最近下降了？')" style="background: linear-gradient(135deg, #667eea 0%, #ed8936 100%); color: white;">为什么GMV最近下降了？</div>
-                <div class="example-chip" onclick="setQuery('分析DAU下降的原因')" style="background: linear-gradient(135deg, #667eea 0%, #ed8936 100%); color: white;">分析DAU下降的原因</div>
-                <div class="example-chip" onclick="setQuery('转化率怎么了')" style="background: linear-gradient(135deg, #667eea 0%, #ed8936 100%); color: white;">转化率怎么了</div>
-                <div class="example-chip" onclick="setQuery(' diagnose 用户流失问题')" style="background: linear-gradient(135deg, #667eea 0%, #ed8936 100%); color: white;">诊断用户流失问题</div>
             </div>
-        </div>
 
-        <!-- 意图识别流程 -->
-        <div id="intent-flow-module" class="module-content active">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🎯 三层意图识别流程</h2>
-            <div id="intent-flow-content">
-                <p style="color: #718096;">请先执行查询以查看意图识别详细流程...</p>
+            <!-- 图谱召回模块 -->
+            <div id="graph-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">🕸️ 图谱召回模块详细过程</h2>
+                <div id="graph-content">
+                    <p style="color: #718096;">请先执行查询以查看图谱召回的详细过程...</p>
+                </div>
             </div>
-        </div>
 
-        <!-- 向量检索模块 -->
-        <div id="vector-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🧠 向量检索模块详细过程</h2>
-            <div id="vector-content">
-                <p style="color: #718096;">请先执行查询以查看向量检索的详细过程...</p>
+            <!-- 双路召回融合 -->
+            <div id="fusion-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">🔀 双路召回融合</h2>
+                <div id="fusion-content">
+                    <p style="color: #718096;">请先执行查询以查看召回融合详细流程...</p>
+                </div>
             </div>
-        </div>
 
-        <!-- 图谱召回模块 -->
-        <div id="graph-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🕸️ 图谱召回模块详细过程</h2>
-            <div id="graph-content">
-                <p style="color: #718096;">请先执行查询以查看图谱召回的详细过程...</p>
+            <!-- 融合精排详情 -->
+            <div id="ranking-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">⚖️ 融合精排详情</h2>
+                <div id="ranking-content">
+                    <p style="color: #718096;">请先执行查询以查看精排详细流程...</p>
+                </div>
             </div>
-        </div>
 
-        <!-- 双路召回融合 -->
-        <div id="fusion-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🔀 双路召回融合</h2>
-            <div id="fusion-content">
-                <p style="color: #718096;">请先执行查询以查看召回融合详细流程...</p>
+            <!-- 根因分析模块 -->
+            <div id="root-cause-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">🔍 根因分析</h2>
+                <div id="root-cause-content">
+                    <p style="color: #718096;">请执行包含"为什么"、"分析"等关键词的查询以查看根因分析...</p>
+                </div>
             </div>
-        </div>
 
-        <!-- 融合精排详情 -->
-        <div id="ranking-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">⚖️ 融合精排详情</h2>
-            <div id="ranking-content">
-                <p style="color: #718096;">请先执行查询以查看精排详细流程...</p>
+            <!-- 大语言模型模块 -->
+            <div id="llm-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">🤖 大语言模型模块详细过程</h2>
+                <div id="llm-content">
+                    <p style="color: #718096;">请先执行查询以查看LLM调用的详细过程...</p>
+                </div>
             </div>
-        </div>
 
-        <!-- 根因分析模块 -->
-        <div id="root-cause-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🔍 根因分析</h2>
-            <div id="root-cause-content">
-                <p style="color: #718096;">请执行包含"为什么"、"分析"等关键词的查询以查看根因分析...</p>
+            <!-- MQL/SQL生成模块 -->
+            <div id="mql-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">📝 MQL/SQL生成模块详细过程</h2>
+                <div id="mql-content">
+                    <p style="color: #718096;">请先执行查询以查看MQL/SQL生成的详细过程...</p>
+                </div>
             </div>
-        </div>
 
-        <!-- 大语言模型模块 -->
-        <div id="llm-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🤖 大语言模型模块详细过程</h2>
-            <div id="llm-content">
-                <p style="color: #718096;">请先执行查询以查看LLM调用的详细过程...</p>
+            <!-- 数据查询模块 -->
+            <div id="data-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">🗄️ 数据查询模块详细过程</h2>
+                <div id="data-content">
+                    <p style="color: #718096;">请先执行查询以查看数据查询的详细过程...</p>
+                </div>
             </div>
-        </div>
 
-        <!-- MQL/SQL生成模块 -->
-        <div id="mql-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">📝 MQL/SQL生成模块详细过程</h2>
-            <div id="mql-content">
-                <p style="color: #718096;">请先执行查询以查看MQL/SQL生成的详细过程...</p>
+            <!-- 结果展示 -->
+            <div id="result-module" class="module-content">
+                <h2 style="color: #667eea; margin-bottom: 20px;">📊 查询结果与可视化</h2>
+                <div id="result-content">
+                    <p style="color: #718096;">请先执行查询以查看结果...</p>
+                </div>
             </div>
-        </div>
-
-        <!-- 数据查询模块 -->
-        <div id="data-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">🗄️ 数据查询模块详细过程</h2>
-            <div id="data-content">
-                <p style="color: #718096;">请先执行查询以查看数据查询的详细过程...</p>
-            </div>
-        </div>
-
-        <!-- 结果展示 -->
-        <div id="result-module" class="module-content">
-            <h2 style="color: #667eea; margin-bottom: 20px;">📊 查询结果与可视化</h2>
-            <div id="result-content">
-                <p style="color: #718096;">请先执行查询以查看结果...</p>
-            </div>
-        </div>
         </div> <!-- 关闭 main-content -->
     </div> <!-- 关闭 container -->
 
+    <script src="chart_autoviz.js"></script>
     <script>
         // 会话管理
         let currentConversationId = null;
         let conversationHistory = [];
+        let autoViz = null; // AutoVizEngine 实例
+
+        // ... (省略其余代码)
+
+        function renderChart(data) {
+            const intent = queryData.intent || {};
+            if (!autoViz) {
+                autoViz = new AutoVizEngine('resultChart');
+            }
+            autoViz.render(data, intent);
+        }
 
         // 从localStorage加载会话历史
         function loadConversationHistory() {
@@ -1001,10 +1079,10 @@
                         <div class="conversation-detail-query">📊 数据预览（前3条）</div>
                         <div class="conversation-detail-result">
                             ${resultData.slice(0, 3).map((row, i) => {
-                                const date = row.date || row.date || `数据${i+1}`;
-                                const value = row.value || row.metric_value || 0;
-                                return `<div style="margin-bottom: 8px;">${date}: ${value.toLocaleString()}</div>`;
-                            }).join('')}
+                    const date = row.date || row.date || `数据${i + 1}`;
+                    const value = row.value || row.metric_value || 0;
+                    return `<div style="margin-bottom: 8px;">${date}: ${value.toLocaleString()}</div>`;
+                }).join('')}
                         </div>
                     </div>
                 `;
@@ -1116,6 +1194,42 @@
 
         let queryData = null;  // 存储查询结果
 
+        // Tab Switching Logic
+        function switchTab(tabId, event) {
+            // Remove active class from all tabs
+            document.querySelectorAll('.module-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+
+            // Hide all tab contents
+            document.querySelectorAll('.module-content').forEach(content => {
+                content.style.display = 'none';
+                content.classList.remove('active');
+            });
+
+            // Activate selected tab and content
+            if (event && event.target) {
+                event.target.closest('.module-tab').classList.add('active');
+            }
+            const activeContent = document.getElementById(tabId);
+            if (activeContent) {
+                activeContent.style.display = 'block';
+                activeContent.classList.add('active'); // Some styles might use class
+            }
+
+            // FIX: Resize chart if switching to result tab
+            if (tabId === 'result-module' && typeof Chart !== 'undefined') { // Changed 'resultsDisplay' to 'result-module' based on existing structure
+                const chart = Chart.getChart('resultChart');
+                if (chart) {
+                    console.log("Resize chart on tab switch");
+                    setTimeout(() => {
+                        chart.resize();
+                        chart.update();
+                    }, 50); // Small delay to allow DOM render
+                }
+            }
+        }
+
         // 模块切换
         function switchModule(moduleName, event) {
             // 隐藏所有模块
@@ -1130,6 +1244,19 @@
             document.getElementById(moduleName + '-module').classList.add('active');
             if (event && event.target) {
                 event.target.closest('.module-tab').classList.add('active');
+            }
+
+            // FIX: Resize chart if switching to result module
+            if (moduleName === 'result' && typeof Chart !== 'undefined') {
+                // Use setTimeout to ensure DOM is visible
+                setTimeout(() => {
+                    const chart = Chart.getChart('resultChart');
+                    if (chart) {
+                        console.log("Resize chart on module switch");
+                        chart.resize();
+                        chart.update();
+                    }
+                }, 100);
             }
 
             // 如果有数据，刷新显示
@@ -1767,94 +1894,108 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
             if (queryData.length > 0) {
                 html += `
                     <h2 style="color: #667eea; margin: 20px 0;">📈 数据可视化</h2>
-                    <div class="chart-container">
+                    <div class="chart-container" style="min-height: 300px; position: relative;">
                         <canvas id="resultChart"></canvas>
                     </div>
                 `;
             }
 
             // 智能解读
-            if (interpretation && !interpretation.error) {
+            if (interpretation) {
                 html += `
                     <h2 style="color: #667eea; margin: 20px 0;">🤖 AI 智能解读</h2>
                     <div class="process-step">
-                        <div class="data-card">
-                            <div class="data-card-title">💡 总结</div>
-                            <div class="data-card-value">${interpretation.summary || 'N/A'}</div>
+                `;
+
+                if (interpretation.error) {
+                    html += `
+                        <div style="background: #fff5f5; border-left: 4px solid #f56565; padding: 15px; margin-bottom: 15px;">
+                            <div style="color: #c53030; font-weight: bold;">⚠️ 解读服务异常</div>
+                            <div style="color: #e53e3e; font-size: 13px;">${interpretation.error}</div>
                         </div>
-                        <div class="data-card">
-                            <div class="data-card-title">📈 趋势</div>
-                            <div class="data-card-value">${interpretation.trend || 'N/A'}</div>
-                        </div>
-                        ${(interpretation.key_findings || []).length > 0 ? `
-                        <div class="data-card">
+                    `;
+                }
+
+                html += `
+                        <div class="data-grid">
+                            <div class="data-card" style="grid-column: span 3;">
+                                <div class="data-card-title">💡 总结</div>
+                                <div class="data-card-value" style="font-size: 16px; font-weight: 500; color: #2d3748;">
+                                    ${interpretation.summary || '暂无总结'}
+                                </div>
+                            </div>
+                `;
+
+                if (!interpretation.error) {
+                    html += `
+                            <div class="data-card">
+                                <div class="data-card-title">📈 趋势</div>
+                                <div class="data-card-value">${interpretation.trend || 'N/A'}</div>
+                            </div>
+                   `;
+                }
+
+                html += `</div>`; // Close grid
+
+                if (interpretation.key_findings && interpretation.key_findings.length > 0) {
+                    html += `
+                        <div class="data-card" style="margin-top: 15px;">
                             <div class="data-card-title">🔍 关键发现</div>
                             <div class="data-card-value">
-                                <ul style="margin-left: 20px; margin-top: 10px;">
-                                    ${(interpretation.key_findings || []).slice(0, 3).map(f => `<li>${f}</li>`).join('')}
+                                <ul style="margin-left: 20px; margin-top: 5px; color: #4a5568;">
+                                    ${interpretation.key_findings.map(f => `<li>${f}</li>`).join('')}
                                 </ul>
                             </div>
                         </div>
-                        ` : ''}
-                    </div>
-                `;
+                    `;
+                }
+
+                if (interpretation.insights && interpretation.insights.length > 0) {
+                    html += `
+                        <div class="data-card" style="margin-top: 15px; background: #ebf8ff;">
+                             <div class="data-card-title" style="color: #3182ce;">🧠 深入洞察</div>
+                             <div class="data-card-value">
+                                <ul style="margin-left: 20px; margin-top: 5px; color: #2c5282;">
+                                    ${interpretation.insights.map(i => `<li>${i}</li>`).join('')}
+                                </ul>
+                             </div>
+                        <div class="chart-container" id="resultChartContainer" style="min-height: 300px; position: relative; margin-top: 20px;">
+                    <canvas id="resultChart"></canvas>
+                </div>
+            </div>
+            `;
+                }
+
+                html += `</div>`; // Close process-step
             }
 
             html += '</div>';
             container.innerHTML = html;
 
             // 渲染图表
-            if (queryData.length > 0) {
+            if (interpretation && interpretation.data_points && interpretation.data_points.length > 0) {
+                // Use data_points from interpretation if available, as they are cleaner
+                setTimeout(() => renderChart(interpretation.data_points), 100);
+            } else if (queryData && queryData.length > 0) {
                 setTimeout(() => renderChart(queryData), 100);
             }
         }
 
         function renderChart(data) {
-            const ctx = document.getElementById('resultChart');
-            if (!ctx) return;
+            const intent = queryData.intent || {};
 
-            const labels = data.map(d => d.date || d.dimension || '未知');
-            const values = data.map(d => d.value || d.metric_value || 0);
+            // FIX: canvas element is recreated by displayResultModule, so we must 
+            // update the context or create a new instance.
+            // Also destroy any existing chart on the new canvas (though likely none)
+            const newCanvas = document.getElementById('resultChart');
+            if (newCanvas && typeof Chart !== 'undefined') {
+                const existingChart = Chart.getChart(newCanvas);
+                if (existingChart) existingChart.destroy();
+            }
 
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: data[0]?.metric || '数值',
-                        data: values,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 6,
-                        pointHoverRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    aspectRatio: 2.5,
-                    plugins: {
-                        legend: { display: true },
-                        tooltip: {
-                            backgroundColor: 'rgba(45, 55, 72, 0.95)',
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.parsed.y;
-                                    return `数值: ${value.toLocaleString()}`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false
-                        }
-                    }
-                }
-            });
+            // Always create new engine instance to bind to the new DOM element
+            autoViz = new AutoVizEngine('resultChart');
+            autoViz.render(data, intent);
         }
 
         function formatDate(dateStr) {
@@ -1951,7 +2092,7 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
             const metadata = l2Layer.metadata;
             const recallType = metadata.recall_type || '未知';
             const fusionStats = metadata.fusion_stats || {};
-            const sourceDistribution = metadata.source_distribution || {vector: 0, graph: 0, both: 0};
+            const sourceDistribution = metadata.source_distribution || { vector: 0, graph: 0, both: 0 };
             const totalCandidates = fusionStats.total_candidates || 0;
             const vectorAvgScore = fusionStats.vector_avg_score || 0;
             const graphAvgScore = fusionStats.graph_avg_score || 0;
@@ -1960,9 +2101,9 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
 
             // 召回方法卡片（支持双路召回）
             const methodDisplay = recallType === 'dual_recall' ? '双路召回融合' :
-                                 recallType === 'vector_only' ? '向量召回' :
-                                 recallType === 'graph_only' ? '图谱召回' :
-                                 recallType === 'semantic_fallback' ? '语义降级' : '未知';
+                recallType === 'vector_only' ? '向量召回' :
+                    recallType === 'graph_only' ? '图谱召回' :
+                        recallType === 'semantic_fallback' ? '语义降级' : '未知';
             const methodColor = recallType === 'dual_recall' ?
                 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' :
                 'linear-gradient(135deg, #ed8936 0%, #dd6b20 100%)';
@@ -2132,10 +2273,10 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
                     const sourceStyle = source === 'both' ?
                         'background: linear-gradient(90deg, #4299e1 0%, #805ad5 100%);' :
                         source === 'vector' ? 'background: #4299e1;' :
-                        source === 'graph' ? 'background: #805ad5;' : 'background: #a0aec0;';
+                            source === 'graph' ? 'background: #805ad5;' : 'background: #a0aec0;';
                     const sourceText = source === 'both' ? '双重召回' :
-                                     source === 'vector' ? '向量召回' :
-                                     source === 'graph' ? '图谱召回' : '未知';
+                        source === 'vector' ? '向量召回' :
+                            source === 'graph' ? '图谱召回' : '未知';
 
                     html += `
                         <div style="background: #f7fafc; border-radius: 10px; padding: 16px; border-left: 4px solid #48bb78;">
@@ -2489,17 +2630,17 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
         }
 
         // 页面加载后自动执行
-        window.onload = function() {
+        window.onload = function () {
             // 加载会话历史
             loadConversationHistory();
 
             // 回车键支持
-            document.getElementById('queryInput').addEventListener('keypress', function(e) {
+            document.getElementById('queryInput').addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') executeQuery();
             });
 
             // 点击模态框背景关闭
-            document.getElementById('conversationDetailModal').addEventListener('click', function(e) {
+            document.getElementById('conversationDetailModal').addEventListener('click', function (e) {
                 if (e.target === this) {
                     closeConversationDetail();
                 }
@@ -2512,4 +2653,5 @@ ${JSON.stringify(queryData.slice(0, 3), null, 2)}
         };
     </script>
 </body>
+
 </html>

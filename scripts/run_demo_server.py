@@ -28,6 +28,8 @@ from src.recall.graph.graph_store import GraphStore
 from src.inference.zhipu_intent import ZhipuIntentRecognizer
 from src.mql.sql_generator_v2 import SQLGeneratorV2
 from src.inference.intent import QueryIntent, TimeGranularity, AggregationType
+from src.mql.intelligent_interpreter import IntelligentInterpreter
+# from src.mql.mql_engine import MQLEngine # Removed to avoid error if not used or wrong name
 
 # 是否启用真实 LLM(可通过环境变量控制)
 import os
@@ -477,6 +479,61 @@ class DemoHybridIntentRecognizer:
         return None
 
 demo_recognizer = DemoHybridIntentRecognizer(MOCK_METRICS)
+intelligent_interpreter = IntelligentInterpreter()
+
+
+def _generate_intelligent_interpretation(query: str, metric: Dict, data: List[Dict], sql: str, start_time: float) -> Interpretation:
+    """生成智能解读(使用LLM)."""
+    try:
+        # 规范化数据字段名(intelligent_interpreter期望"value"字段)
+        normalized_data = []
+        for row in data:
+            normalized_row = row.copy()
+            if "metric_value" in normalized_row and "value" not in normalized_row:
+                normalized_row["value"] = normalized_row["metric_value"]
+            normalized_data.append(normalized_row)
+        
+        # 构建mql_result供interpret方法使用
+        mql_result_for_interpret = {
+            "result": normalized_data,
+            "row_count": len(normalized_data),
+            "sql": sql,
+            "execution_time_ms": (time.time() - start_time) * 1000
+        }
+        
+        # 获取metric_def
+        metric_def = {
+            "name": metric['name'],
+            "code": metric['code'],
+            "unit": metric.get('unit', '未知'),
+            "description": metric.get('description', '')
+        }
+        
+        # 调用智能解读器
+        interpretation_result = intelligent_interpreter.interpret(
+            query=query,
+            mql_result=mql_result_for_interpret,
+            metric_def=metric_def
+        )
+        
+        return Interpretation(
+            summary=interpretation_result.summary,
+            trend=interpretation_result.trend,
+            key_findings=interpretation_result.key_findings,
+            error=None
+        )
+    except Exception as e:
+        import traceback
+        print(f"❌ Intelligent Interpretation failed: {str(e)}")
+        traceback.print_exc()
+        
+        # 降级到默认模板
+        return Interpretation(
+            summary=f"查询 {metric['name']} 的数据",
+            trend="stable",
+            key_findings=[f"共 {len(data)} 条记录"],
+            error=str(e)
+        )
 
 
 @app.post("/api/v3/query", response_model=QueryResponseV3)
@@ -588,11 +645,7 @@ async def query_v3(request: QueryRequestV3):
         all_layers=recognition_result['layers'],
         mql=f"Query(metric='{metric['name']}', dimensions={dimensions})",
         sql=generated_sql if generated_sql else "-- SQL generation failed",
-        interpretation=Interpretation(
-            summary=f"查询 {metric['name']} 的数据",
-            trend="stable",
-            key_findings=[f"共 {len(data)} 条记录"]
-        ),
+        interpretation=_generate_intelligent_interpretation(request.query, metric, data, generated_sql if generated_sql else sql_str, start_time),
         root_cause_analysis=None
     )
 

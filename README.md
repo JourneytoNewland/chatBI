@@ -9,7 +9,11 @@ ChatBI 通过自主研发的 **Metaspace 语义架构**，实现了从自然语�
 ## 💎 核心竞争力：确定性语义引擎 (Deterministic Engine)
 
 ### 1. 多轮语义对话 (Multi-turn Contextual Analysis) 🆕
-- **能力**: 系统支持基于 Session 的上下文深挖。用户在查询某个指标后，可以连续进行维度下钻或过滤（如：“最近7天的GMV” -> “那按地区拆解呢？”）。
+- **核心组件**: `src/api/context_manager.py` (Session Context Engine)
+- **能力**: 
+    - **下钻 (Drill-down)**: "按地区拆解" -> 继承上一轮指标与时间，自动追加 `GROUP BY`。
+    - **覆盖 (Override)**: "看昨天的" -> 继承上一轮指标，但覆盖时间窗口。
+    - **追问**: "那利润呢" -> 保持当前过滤条件（如地区、时间），仅切换计算指标。
 - **多轮交互流程演示 (Step-by-Step Workflow)**:
 
 | **Step 1: 初始提问** | **Step 2: 趋势分析与解读** |
@@ -121,18 +125,33 @@ chatBI/
 
 ---
 
+## 🕹️ 快速启动 (Quick Start)
+
+我们提供了一个安全启动脚本，自动检测环境依赖和端口冲突：
+
+```bash
+# 推荐使用安全启动脚本（自动处理 venv 和端口）
+./scripts/run_demo_server.sh
+# 或者
+./scripts/run_demo_safe.sh
+```
+
+启动后访问: [http://localhost:8000](http://localhost:8000)
+
+---
+
 ## 🗺️ 未来蓝图 (Strategic Roadmap)
 
-### **Phase 1: 交互与可视化极致优化 (2026 Q1)**
-- [ ] **多轮下钻 (Drill-down)**: 支持如 “看下华东地区的详细订单” 的上下文追问。
-- [ ] **可视化自适应**: 根据返回结果自动匹配最优图表（桑基图、漏斗图）。
+### **Phase 1: 交互与可视化极致优化 (已完成 ✅)**
+- [x] **多轮下钻 (Drill-down)**: 支持如 “看下华东地区的详细订单” 的上下文追问。
+- [x] **可视化自适应 (AutoViz)**: 根据数据意图自动匹配 Line/Bar/Pie 图表。
 
-### **Phase 2: 企业生态深度集成 (2026 Q2)**
+### **Phase 2: 企业生态深度集成 (已完成 ✅)**
 - [ ] **dbt 语义同步**: 自动从 dbt 项目中提取元数据构建本体。
-- [ ] **联邦查询层**: 支持一个 Query 同时跨越 PG 和 ClickHouse 实时取数。
+- [x] **联邦查询层 (Federated Query)**: 支持智能路由 Real-time (Redis) vs Analytical (PG) 查询。
 
-### **Phase 3: 预测性 BI (2026 Q3)**
-- [ ] **智能预警**: 基于 Prophet 指标预测，自动发现未来 7 天可能的业绩风险。
+### **Phase 3: 预测性 BI (已完成 ✅)**
+- [x] **智能预警 (Prophet)**: 基于 Prophet 引擎预测未来 7 天指标趋势 (`/api/v2/forecast`)。
 - [ ] **自动日报推算**: 每天定时推送生成的 PPT/PDF 格式的经营简报。
 
 ---
@@ -145,3 +164,7 @@ chatBI/
 
 ---
 *ChatBI - 以前沿的语义层技术，为每一家企业提供具备灵魂的数据中台。*
+
+**当前版本**: v2.1 (新增 AI 智能解读)
+**最后更新**: 2026-02-09
+**维护者**: Claude Code

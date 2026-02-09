@@ -238,28 +238,23 @@ class ZhipuIntentRecognizer:
 """
         return prompt
 
-    def recognize(self, query: str, candidates: list = None) -> Optional[ZhipuIntentResult]:
-        """识别查询意图.
+    def generate_response(self, prompt: str, system_prompt: str = "你是一个专业的助手。") -> Optional[str]:
+        """调用智谱API生成响应.
 
         Args:
-            query: 用户查询文本
-            candidates: 候选指标列表（从向量检索获取）
+            prompt: 用户提示词
+            system_prompt: 系统提示词
 
         Returns:
-            智谱意图识别结果
+            生成的文本内容，如果失败返回None
         """
         if not self.api_key:
             print("❌ 智谱API密钥未配置")
             return None
 
-        start_time = time.time()
-
         try:
             # 构建JWT token
             token = self._generate_token()
-
-            # 构建请求（传递candidates）
-            prompt = self._build_prompt(query, candidates)
 
             # 调用智谱API
             with httpx.Client(timeout=60.0) as client:
@@ -274,7 +269,7 @@ class ZhipuIntentRecognizer:
                         "messages": [
                             {
                                 "role": "system",
-                                "content": "你是一个专业的BI查询意图识别专家。严格按照JSON格式输出结果，不要输出任何额外内容。"
+                                "content": system_prompt
                             },
                             {
                                 "role": "user",
@@ -292,6 +287,36 @@ class ZhipuIntentRecognizer:
 
             # 解析结果
             content = data["choices"][0]["message"]["content"]
+            return content
+
+        except Exception as e:
+            print(f"❌ 智谱API调用失败: {e}")
+            return None
+
+    def recognize(self, query: str, candidates: list = None) -> Optional[ZhipuIntentResult]:
+        """识别查询意图.
+
+        Args:
+            query: 用户查询文本
+            candidates: 候选指标列表（从向量检索获取）
+
+        Returns:
+            智谱意图识别结果
+        """
+        start_time = time.time()
+
+        try:
+            # 构建Prompt
+            prompt = self._build_prompt(query, candidates)
+            
+            # 调用LLM
+            content = self.generate_response(
+                prompt, 
+                system_prompt="你是一个专业的BI查询意图识别专家。严格按照JSON格式输出结果，不要输出任何额外内容。"
+            )
+            
+            if not content:
+                return None
 
             # 清理可能的markdown标记
             content = content.strip()
@@ -304,9 +329,6 @@ class ZhipuIntentRecognizer:
             content = content.strip()
 
             intent_data = json.loads(content)
-
-            # 获取token使用情况
-            usage = data.get("usage", {})
 
             # 构建结果
             return ZhipuIntentResult(
@@ -321,16 +343,9 @@ class ZhipuIntentRecognizer:
                 reasoning=intent_data.get("reasoning", ""),
                 model=self.model,
                 latency=time.time() - start_time,
-                tokens_used={
-                    "prompt_tokens": usage.get("prompt_tokens", 0),
-                    "completion_tokens": usage.get("completion_tokens", 0),
-                    "total_tokens": usage.get("total_tokens", 0),
-                }
+                tokens_used={"total_tokens": 0} # 简化，如果需要精确统计需重构返回值
             )
 
-        except httpx.HTTPError as e:
-            print(f"❌ 智谱API请求失败: {e}")
-            return None
         except json.JSONDecodeError as e:
             print(f"❌ JSON解析失败: {e}")
             print(f"   原始响应: {content if 'content' in locals() else 'N/A'}")

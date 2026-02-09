@@ -14,7 +14,6 @@ from ..mql.generator import MQLGenerator
 from ..mql.sql_generator import SQLGenerator
 from ..mql.engine import MQLExecutionEngine
 from ..mql.intelligent_interpreter import IntelligentInterpreter
-from ..inference.context import conversation_manager
 
 
 router = APIRouter(tags=["complete-query"])
@@ -62,18 +61,18 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
     4. 数据查询
     5. 智能解读
     """
+    print(f"🚀🚀🚀 DEBUG: complete_query() ENTRY POINT - query={request.query}")
     start_time = time.time()
 
     # 获取或创建会话ID
     conversation_id = request.conversation_id or str(uuid.uuid4())
-    ctx = conversation_manager.get_or_create(conversation_id)
-
-    # 解析指代关系（使用会话上下文）
-    resolved_query = ctx.resolve_reference(request.query)
+    
+    # 注意: ContextManager 现在集成在 intent_recognizer 内部
+    # 我们直接将 conversation_id 传递给 recognize 方法
 
     try:
-        # Step 1: 意图识别（三层架构，使用解析后的查询）
-        intent_result = intent_recognizer.recognize(resolved_query, top_k=request.top_k)
+        # Step 1: 意图识别（三层架构，传入 session_id 支持多轮对话）
+        intent_result = intent_recognizer.recognize(request.query, top_k=request.top_k, session_id=conversation_id)
 
         # 提取all_layers信息
         all_layers = []
@@ -115,12 +114,16 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
             try:
                 result = mql_engine.execute(mql)
                 data = result.get("result", [])
+                print(f"🔍 DEBUG: MQL execution succeeded, data_count={len(data)}")
             except Exception as e:
-                # 如果执行失败，使用模拟数据
+                # 如果执行失败,使用模拟数据
                 data = generate_mock_data(intent_result.final_intent.core_query)
+                print(f"🔍 DEBUG: MQL execution failed, using mock data, data_count={len(data)}")
 
             # Step 5: 智能解读
+            print(f"🔍 DEBUG: Checking interpretation condition: data={data is not None}, len={len(data) if data else 0}")
             if data and len(data) > 0:
+                print(f"🔍 DEBUG: Entering interpretation block")
                 try:
                     # 计算当前执行时间
                     current_execution_time = (time.time() - start_time) * 1000
@@ -139,11 +142,16 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
                         # 使用默认metric_def
                         metric_def = {"name": intent_result.final_intent.core_query, "unit": "未知"}
 
+                    # 调用智能解读器
+                    print(f"🔍 DEBUG: About to call intelligent_interpreter.interpret()")
+                    print(f"🔍 DEBUG: query={request.query}, data_count={len(data)}")
                     interpretation_result = intelligent_interpreter.interpret(
                         query=request.query,
                         mql_result=mql_result_for_interpret,
                         metric_def=metric_def
                     )
+                    print(f"🔍 DEBUG: interpretation_result.summary={interpretation_result.summary}")
+                    print(f"🔍 DEBUG: interpretation_result.key_findings={interpretation_result.key_findings}")
 
                     # 转换为字典格式
                     interpretation = {
@@ -155,9 +163,21 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
                         "confidence": interpretation_result.confidence
                     }
                 except Exception as e:
+                    import traceback
+                    error_msg = f"Intelligent Interpretation failed: {str(e)}"
+                    print(f"❌ {error_msg}")
+                    traceback.print_exc()
+                    
+                    # Log to file for persistence
+                    with open("debug_interpretation.log", "a") as f:
+                        f.write(f"\n[{datetime.now()}] {error_msg}\n")
+                        f.write(traceback.format_exc())
+
                     interpretation = {
-                        "summary": f"查询'{intent_result.final_intent.core_query}'返回{len(data)}条数据",
-                        "error": str(e)
+                        "summary": "AI解读遭遇异常，请查看详情。",
+                        "error": str(e),
+                        "key_findings": [],
+                        "insights": []
                     }
         except Exception as e:
             # MQL/SQL生成失败，记录错误并生成模拟数据作为降级
@@ -187,11 +207,7 @@ async def complete_query(request: QueryRequest) -> QueryResponse:
 
         execution_time = (time.time() - start_time) * 1000
 
-        # 更新会话上下文
-        ctx.add_turn(resolved_query, {
-            "intent": intent_dict,
-            "data": data
-        })
+        # 更新会话上下文 (已由 intent_recognizer 内部集成处理)
 
         return QueryResponse(
             query=request.query,

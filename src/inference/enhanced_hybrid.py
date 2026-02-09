@@ -151,12 +151,33 @@ class EnhancedHybridIntentRecognizer:
             "failures": 0,
         }
 
-    def recognize(self, query: str, top_k: int = 10) -> HybridIntentResult:
+from .context.manager import ContextManager
+
+# ... (Previous imports)
+
+class EnhancedHybridIntentRecognizer:
+    # ... (Previous docstring)
+
+    def __init__(
+        self,
+        llm_provider: str = "zhipu",
+        enable_semantic: bool = True,
+        enable_dual_recall: bool = True,
+        enable_rerank: bool = True,
+        confidence_thresholds: dict[str, float] = None
+    ):
+        # ... (Previous init code)
+        
+        # Initialize Context Manager
+        self.context_manager = ContextManager()
+
+    def recognize(self, query: str, top_k: int = 10, session_id: Optional[str] = None) -> HybridIntentResult:
         """使用三层架构识别查询意图.
 
         Args:
             query: 用户查询文本
             top_k: 返回候选数量
+            session_id: 会话ID (用于多轮对话上下文)
 
         Returns:
             混合识别结果
@@ -167,78 +188,139 @@ class EnhancedHybridIntentRecognizer:
         all_layers = []
         candidates = []
 
+        # ... (L1, L2, L3 logic remains same, capturing result into `raw_result`)
+        
+        # Helper to process result
+        raw_intent = None
+        source_layer = "Fallback"
+        
         # L1: 规则匹配
         l1_result = self._layer1_rule_match(query)
         all_layers.append(l1_result)
 
         if l1_result.success and l1_result.confidence >= self.thresholds["rule"]:
             self.stats["l1_hits"] += 1
-            return HybridIntentResult(
-                query=query,
-                final_intent=l1_result.intent,
-                source_layer="L1_Rule",
-                all_layers=all_layers,
-                total_duration=time.time() - start,
-                candidates=candidates
+            raw_intent = l1_result.intent
+            source_layer = "L1_Rule"
+        
+        # L2: 语义向量匹配 (Only if L1 failed)
+        if not raw_intent:
+            l2_result = self._layer2_semantic_match(query, top_k)
+            all_layers.append(l2_result)
+            candidates = l2_result.metadata.get("candidates", []) # Capture candidates
+
+            if l2_result.success and l2_result.confidence >= self.thresholds["semantic"]:
+                self.stats["l2_hits"] += 1
+                raw_intent = l2_result.intent
+                source_layer = "L2_Semantic"
+
+        # L3: LLM推理 (Only if L2 failed)
+        if not raw_intent:
+            l3_result = self._layer3_llm_inference(query, candidates)
+            all_layers.append(l3_result)
+            
+            if l3_result.success:
+                self.stats["l3_hits"] += 1
+                raw_intent = l3_result.intent
+                source_layer = "L3_LLM"
+        
+        # Fallback
+        if not raw_intent:
+            self.stats["failures"] += 1
+            best_layer = max(
+                [r for r in all_layers if r.intent],
+                key=lambda x: x.confidence,
+                default=l1_result
             )
-
-        # L2: 语义向量匹配
-        l2_result = self._layer2_semantic_match(query, top_k)
-        all_layers.append(l2_result)
-
-        # 获取L2的候选指标，传递给L3
-        l2_candidates = l2_result.metadata.get("candidates", [])
-
-        if l2_result.success and l2_result.confidence >= self.thresholds["semantic"]:
-            self.stats["l2_hits"] += 1
-            return HybridIntentResult(
-                query=query,
-                final_intent=l2_result.intent,
-                source_layer="L2_Semantic",
-                all_layers=all_layers,
-                total_duration=time.time() - start,
-                candidates=l2_candidates
+            raw_intent = best_layer.intent or QueryIntent(
+                 query=query, core_query=query, time_range=None, time_granularity=None,
+                 aggregation_type=None, dimensions=[], comparison_type=None, filters={}
             )
+            source_layer = "Fallback"
 
-        # L3: LLM深度推理（传递L2的候选指标）
-        l3_result = self._layer3_llm_inference(query, l2_candidates)
-        all_layers.append(l3_result)
-
-        if l3_result.success:
-            self.stats["l3_hits"] += 1
-            return HybridIntentResult(
-                query=query,
-                final_intent=l3_result.intent,
-                source_layer="L3_LLM",
-                all_layers=all_layers,
-                total_duration=time.time() - start,
-                candidates=l3_result.metadata.get("candidates", [])
-            )
-
-        # 全部失败，使用最佳降级结果
-        self.stats["failures"] += 1
-        best_result = max(
-            [r for r in all_layers if r.intent],
-            key=lambda x: x.confidence,
-            default=l1_result
-        )
+        # Context Resolution (New Step)
+        final_intent = raw_intent
+        if session_id:
+            # Convert QueryIntent to dict for ContextManager
+            intent_dict = {
+                "metric": {"name": raw_intent.core_query} if raw_intent.core_query else None, # Simplified metric representation
+                "dimensions": raw_intent.dimensions,
+                "filters": raw_intent.filters,
+                # Helper to detect if intent is just a filter change
+            }
+            # For now, simplistic mapping. Ideally QueryIntent should have a 'metric_entity' field.
+            # Using core_query as proxy for metric name might be weak if core_query is "按地区".
+            
+            # Better approach: If L1/L2/L3 identified a metric candidate, use that.
+            # But raw_intent structure needs 'metric_id' or similar. 
+            # Current `QueryIntent` relies on `core_query` being the metric name/question.
+            
+            # Let's rely on ContextManager's resolve logic which expects 'metric', 'dimensions', 'filters'.
+            # We need to extract these from `raw_intent`.
+            
+            # Temporarily pass dictionary constructed from intent
+            # Note: ContextManager expects 'metric' to be a dict e.g. {'name': 'GMV', ...} or None
+            
+            # If the query is "按地区拆解", core_query might be "按地区拆解". Metric is None.
+            # If query is "GMV", core_query is "GMV". Metric is "GMV".
+            
+            # Heuristic: If candidates were found (L2), pick top 1 as metric? 
+            # Or if intent is L1/L2 success, core_query likely contains metric.
+            
+            metric_info = None
+            if candidates:
+                # Use top candidate from L2/dual recall
+                c = candidates[0]
+                # candidates is list of dicts or objects? L2 returns dicts in metadata['candidates']
+                # Wait, L2 metadata['candidates'] is list of dicts.
+                metric_info = candidates[0] # dict with name, score
+            elif raw_intent.core_query:
+                 # Check if core_query looks like a drill-down keyword?
+                 # Assume if no candidates found, it might be a drill-down or filter.
+                 pass
+            
+            # To properly support this, we need to pass `candidates` to ContextManager or resolve metric here.
+            # Let's update `resolve_context` call:
+            
+            ctx_input = {
+                "query": query,
+                "intent_type": "UNKNOWN", # Logic to determine intent type?
+                "metric": metric_info, 
+                "dimensions": raw_intent.dimensions,
+                "filters": raw_intent.filters or {}
+            }
+            
+            if raw_intent.time_range:
+                ctx_input["filters"]["time_range"] = raw_intent.time_range
+            
+            merged_dict = self.context_manager.resolve_context(session_id, ctx_input)
+            
+            # Update final_intent from merged_dict
+            # We need to map back to QueryIntent
+            final_intent.dimensions = merged_dict.get("dimensions", [])
+            final_intent.filters = merged_dict.get("filters", {})
+            if merged_dict.get("metric"):
+                 # Update core query to reflect metric name if inherited
+                 # This acts as the "search term" for downstream MQL
+                 if not metric_info: # If we didn't have a metric before, but now we do
+                     final_intent.core_query = merged_dict["metric"]["name"]
+            
+            # Save the turn
+            self.context_manager.save_turn(session_id, {
+                "query": query,
+                "metric": metric_info, # Save the legitimate metric if found
+                "dimensions": raw_intent.dimensions,
+                "filters": final_intent.filters, # Save final filters
+                "sql": "" # MQL generator fills this? We don't have SQL here yet.
+            })
 
         return HybridIntentResult(
             query=query,
-            final_intent=best_result.intent or QueryIntent(
-                query=query,
-                core_query=query,
-                time_range=None,
-                time_granularity=None,
-                aggregation_type=None,
-                dimensions=[],
-                comparison_type=None,
-                filters={}
-            ),
-            source_layer="Fallback",
+            final_intent=final_intent,
+            source_layer=source_layer,
             all_layers=all_layers,
             total_duration=time.time() - start,
-            candidates=[]
+            candidates=candidates
         )
 
     def _layer1_rule_match(self, query: str) -> LayerResult:

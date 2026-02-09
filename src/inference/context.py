@@ -64,6 +64,42 @@ class ConversationContext:
             return None
         return self.turns[-1].intent
 
+    def merge_intent(self, current_intent: "QueryIntent", last_intent: "QueryIntent") -> "QueryIntent":
+        """合并当前意图与上一轮意图（下钻逻辑）.
+
+        Args:
+            current_intent: 当前识别出的意图
+            last_intent: 上一轮的意图
+
+        Returns:
+            合并后的意图
+        """
+        # 1. 继承核心指标 (如果当前没有明确的核心指标，或者核心指标是通用疑问词)
+        # 简单的启发式：如果 core_query 为空，或者长度很短且没有实际指标名
+        # 更严谨的做法是检查 core_query 是否在指标库中，这里简化处理
+        if not current_intent.core_query or len(current_intent.core_query) < 2:
+            current_intent.core_query = last_intent.core_query
+            print(f"🔗 Context Merge: Inherited metric '{last_intent.core_query}'")
+
+        # 2. 继承时间范围 (如果当前没有指定时间)
+        if not current_intent.time_range:
+            current_intent.time_range = last_intent.time_range
+            current_intent.time_granularity = last_intent.time_granularity
+            print(f"🔗 Context Merge: Inherited time range")
+
+        # 3. 合并过滤条件 (增量合并)
+        if last_intent.filters:
+            # 浅拷贝上一轮的过滤器，然后用当前的覆盖（如果有冲突）
+            merged_filters = last_intent.filters.copy()
+            merged_filters.update(current_intent.filters)
+            current_intent.filters = merged_filters
+            print(f"🔗 Context Merge: Merged filters {merged_filters}")
+
+        # 4. 维度通常不继承，因为下钻往往是换个维度看
+        # 但如果当前完全没有维度，可以考虑继承？暂时不继承，以免混淆
+
+        return current_intent
+
 
 class ConversationManager:
     """多会话管理器（全局单例）."""

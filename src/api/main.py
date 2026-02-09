@@ -105,6 +105,23 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc):
+    """全局异常处理."""
+    import logging
+    logging.error(f"Uncaught exception: {exc}", exc_info=True)
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={
+            "success": False,
+            "error": str(exc),
+            "code": 500,
+            "message": "Internal Server Error"
+        },
+    )
+
+
 # 健康检查
 @app.get("/health")
 async def health_check() -> dict[str, str]:

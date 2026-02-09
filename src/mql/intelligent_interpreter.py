@@ -178,7 +178,10 @@ class IntelligentInterpreter:
 
             # 调用ZhipuAI
             llm = ZhipuIntentRecognizer(model=self.llm_model)
-            response = llm._call_api(prompt)
+            response = llm.generate_response(prompt)
+
+            if not response:
+                raise RuntimeError("LLM返回为空")
 
             # 解析JSON响应
             interpretation = json.loads(response)
@@ -216,7 +219,7 @@ class IntelligentInterpreter:
             "stable": "稳定 →"
         }.get(data_analysis["trend"], "未知")
 
-        return f"""你是一个专业的数据分析助手。请基于以下查询结果生成智能解读：
+        return f"""你是一个专业的商业数据分析师。请基于以下查询结果生成深入的智能解读。
 
 ## 用户查询
 {query}
@@ -237,11 +240,32 @@ class IntelligentInterpreter:
 ## 查询结果（前5条）
 {self._format_results(mql_result['result'][:5])}
 
-请生成：
-1. **summary**（总结，2-3句话）：概括主要发现
-2. **key_findings**（关键发现，3-5点）：数据中的重要特征
-3. **insights**（深入洞察，2-3点）：背后的原因分析
-4. **suggestions**（行动建议，2-3点）：基于数据的建议
+请生成高质量的分析报告，要求如下：
+
+1. **summary**（智能总结，2-3句话）：
+   - 必须包含具体数值和百分比
+   - 突出最重要的趋势或变化
+   - 使用专业但易懂的语言
+   - 示例："GMV在过去7天呈现稳步上升趋势，从2500元增长至4200元，涨幅达68%。平均日GMV为3350元，整体表现强劲。"
+
+2. **key_findings**（关键发现，3-5点）：
+   - 每条发现必须包含具体数据支撑
+   - 关注异常值、拐点、峰值/谷值
+   - 识别周期性模式（如周末效应、工作日规律）
+   - 对比期初期末的具体变化
+   - 示例："周末GMV显著高于工作日，周六达到峰值5300元，比平均值高58%"
+
+3. **insights**（深入洞察，2-3点）：
+   - 分析数据背后的业务原因
+   - 提出可能的影响因素（市场、季节、运营活动等）
+   - 识别潜在风险或机会
+   - 示例："GMV的周末高峰可能与用户闲暇时间增加和促销活动集中投放有关，建议加大周末营销力度"
+
+4. **suggestions**（行动建议，2-3点）：
+   - 提供可执行的具体建议
+   - 基于数据洞察提出优化方向
+   - 包含预期效果或目标
+   - 示例："建议在工作日增加定向推送，目标将工作日GMV提升至周末水平的80%"
 
 请以JSON格式返回（不要使用markdown代码块，直接返回JSON）：
 {{
